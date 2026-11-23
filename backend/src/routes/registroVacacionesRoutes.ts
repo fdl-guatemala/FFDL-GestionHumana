@@ -11,5 +11,9 @@ router.post("/", registroController.crear);
 router.put("/:id", registroController.actualizar);
 router.delete("/:id", registroController.eliminar);
 
+// Flujo de aprobación en dos pasos: Jefe Inmediato -> Gestión Humana
+router.post("/:id/aprobar-jefe", registroController.aprobarPorJefe);
+router.post("/:id/aprobar-gh", registroController.aprobarPorGestionHumana);
+
 export const registroVacacionesRoutes = router;
 export default router;

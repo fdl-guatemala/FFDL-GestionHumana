@@ -1,71 +1,96 @@
 .sv-page {
   min-height: 100vh;
   background-color: #f4f6f9;
-  padding: 24px 16px 48px;
+  padding-bottom: 48px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #0f294a;
 }
 
+/* Barra superior institucional a todo lo ancho (mismo estilo que Proceso de Vacaciones) */
 .sv-topbar {
+  background: linear-gradient(90deg, #0f294a 0%, #163a66 100%);
+  color: #ffffff;
+  padding: 14px 24px;
+  border-bottom: 3px solid #d49b27;
+  box-shadow: 0 4px 14px rgba(15, 41, 74, 0.14);
+}
+
+.sv-topbar-inner {
   max-width: 980px;
-  margin: 0 auto 18px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
-.sv-back-link {
-  text-decoration: none;
-  color: #163a66;
-  font-weight: 700;
-  font-size: 0.92rem;
-}
-
-.sv-back-link:hover {
-  color: #d49b27;
-}
-
-.sv-sheet {
-  max-width: 980px;
-  margin: 0 auto;
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 14px;
-  padding: 28px 32px;
-  box-shadow: 0 12px 30px rgba(15, 41, 74, 0.08);
-}
-
-.sv-header {
+.sv-brand {
   display: flex;
   align-items: center;
-  gap: 18px;
-  background: linear-gradient(90deg, #0f294a 0%, #163a66 100%);
-  color: #ffffff;
-  padding: 18px 22px;
-  border-radius: 12px;
-  margin-bottom: 22px;
+  gap: 14px;
 }
 
 .sv-logo {
-  height: 52px;
+  height: 48px;
   width: auto;
   object-fit: contain;
   background: transparent;
 }
 
 .sv-org {
-  font-size: 0.85rem;
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
   color: #e2e8f0;
   margin-bottom: 2px;
 }
 
 .sv-doc-title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #d49b27;
+}
+
+.sv-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sv-back-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.sv-back-link:hover {
+  background-color: rgba(212, 155, 39, 0.18);
+  border-color: #d49b27;
+  color: #facc15;
+}
+
+.sv-main {
+  max-width: 980px;
+  margin: 24px auto 0;
+  padding: 0 16px;
+}
+
+.sv-sheet {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 28px 32px;
+  box-shadow: 0 12px 30px rgba(15, 41, 74, 0.08);
 }
 
 .sv-meta-grid {

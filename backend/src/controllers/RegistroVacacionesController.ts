@@ -139,4 +139,58 @@ export class RegistroVacacionesController {
       res.status(status).json({ message: mensaje });
     }
   };
+
+  aprobarPorJefe = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ message: "ID de registro inválido" });
+        return;
+      }
+
+      const resultado = await this.registroService.aprobarPorJefe(id, req.body);
+      res.status(200).json(resultado);
+    } catch (error) {
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : "Error al aprobar solicitud por jefe inmediato";
+      let status = 500;
+      if (mensaje === "Registro de vacaciones no encontrado") status = 404;
+      else if (mensaje.includes("estado") || mensaje.includes("pendiente")) {
+        status = 400;
+      }
+      res.status(status).json({ message: mensaje });
+    }
+  };
+
+  aprobarPorGestionHumana = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ message: "ID de registro inválido" });
+        return;
+      }
+
+      const resultado = await this.registroService.aprobarPorGestionHumana(
+        id,
+        req.body
+      );
+      res.status(200).json(resultado);
+    } catch (error) {
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : "Error al aprobar solicitud por Gestión Humana";
+      let status = 500;
+      if (mensaje === "Registro de vacaciones no encontrado") status = 404;
+      else if (mensaje.includes("estado") || mensaje.includes("pendiente")) {
+        status = 400;
+      }
+      res.status(status).json({ message: mensaje });
+    }
+  };
 }

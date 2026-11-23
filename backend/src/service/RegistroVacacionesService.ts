@@ -1,3 +1,5 @@
+import { EmpleadoRepository } from "../repositories/EmpleadoRepository.ts";
+import { NotificacionRepository } from "../repositories/NotificacionRepository.ts";
 import { PeriodoVacacionesRepository } from "../repositories/PeriodoVacacionesRepository.ts";
 import {
   RegistroVacacionesRepository,
@@ -5,16 +7,27 @@ import {
   type CrearRegistroVacacionesInput,
 } from "../repositories/RegistroVacacionesRepository.ts";
 
+export interface AprobarSolicitudPayload {
+  aprobado_por?: string;
+  observaciones?: string;
+}
+
 export class RegistroVacacionesService {
   private readonly registroRepo: RegistroVacacionesRepository;
   private readonly periodoRepo: PeriodoVacacionesRepository;
+  private readonly empleadoRepo: EmpleadoRepository;
+  private readonly notificacionRepo: NotificacionRepository;
 
   constructor(
     registroRepo = new RegistroVacacionesRepository(),
-    periodoRepo = new PeriodoVacacionesRepository()
+    periodoRepo = new PeriodoVacacionesRepository(),
+    empleadoRepo = new EmpleadoRepository(),
+    notificacionRepo = new NotificacionRepository()
   ) {
     this.registroRepo = registroRepo;
     this.periodoRepo = periodoRepo;
+    this.empleadoRepo = empleadoRepo;
+    this.notificacionRepo = notificacionRepo;
   }
 
   async listarRegistros() {
@@ -66,6 +79,8 @@ export class RegistroVacacionesService {
       );
     }
 
+    const empleado = await this.empleadoRepo.obtenerPorId(Number(input.empleado_id));
+
     const nuevoId = await this.registroRepo.crear({
       ...input,
       dias_tomados: diasTomados,
@@ -73,7 +88,89 @@ export class RegistroVacacionesService {
 
     await this.periodoRepo.ajustarDiasDisponibles(input.periodo_id, -diasTomados);
 
+    // 1) Notificación inicial para el jefe inmediato del empleado
+    const nombreEmpleado =
+      (empleado as { nombre_completo?: string; nombre?: string } | null)
+        ?.nombre_completo ??
+      (empleado as { nombre?: string } | null)?.nombre ??
+      `Empleado #${input.empleado_id}`;
+
+    const jefeInmediato =
+      (empleado as { jefe_inmediato?: string | null } | null)?.jefe_inmediato ??
+      null;
+
+    await this.notificacionRepo.crear({
+      solicitudId: nuevoId,
+      tipoSolicitud: "VACACIONES",
+      destinatarioTipo: "JEFE_INMEDIATO",
+      destinatarioReferencia: jefeInmediato,
+      titulo: "Nueva solicitud de vacaciones por aprobar",
+      mensaje: `${nombreEmpleado} solicitó ${diasTomados} día(s) de vacaciones para el ${input.fecha_disfrute}.`,
+    });
+
     return this.registroRepo.obtenerPorId(nuevoId);
+  }
+
+  async aprobarPorJefe(id: number, _payload: AprobarSolicitudPayload = {}) {
+    const registro = await this.obtenerRegistro(id);
+
+    // Marcamos como leída la notificación del jefe inmediato
+    await this.notificacionRepo.marcarLeidasPorSolicitudYTipo(
+      id,
+      "JEFE_INMEDIATO"
+    );
+
+    // 2) Notificación para Gestión Humana tras la aprobación del jefe
+    const empleado = await this.empleadoRepo.obtenerPorId(
+      Number(registro.empleado_id)
+    );
+    const nombreEmpleado =
+      (empleado as { nombre_completo?: string; nombre?: string } | null)
+        ?.nombre_completo ??
+      (empleado as { nombre?: string } | null)?.nombre ??
+      `Empleado #${registro.empleado_id}`;
+
+    await this.notificacionRepo.crear({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      destinatarioTipo: "GESTION_HUMANA",
+      destinatarioReferencia: null,
+      titulo: "Solicitud aprobada por jefe inmediato",
+      mensaje: `La solicitud #${id} de ${nombreEmpleado} fue aprobada por su jefe inmediato y está lista para Gestión Humana.`,
+    });
+
+    return {
+      aprobado_por: "JEFE_INMEDIATO",
+      registro,
+    };
+  }
+
+  async aprobarPorGestionHumana(
+    id: number,
+    _payload: AprobarSolicitudPayload = {}
+  ) {
+    const registro = await this.obtenerRegistro(id);
+
+    // Marcamos como leída la notificación de Gestión Humana
+    await this.notificacionRepo.marcarLeidasPorSolicitudYTipo(
+      id,
+      "GESTION_HUMANA"
+    );
+
+    // 3) Notificación final al empleado
+    await this.notificacionRepo.crear({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      destinatarioTipo: "EMPLEADO",
+      destinatarioReferencia: String(registro.empleado_id),
+      titulo: "Solicitud de vacaciones aprobada",
+      mensaje: `Tu solicitud de vacaciones #${id} fue aprobada por Gestión Humana.`,
+    });
+
+    return {
+      aprobado_por: "GESTION_HUMANA",
+      registro,
+    };
   }
 
   async actualizarRegistro(id: number, input: ActualizarRegistroVacacionesInput) {

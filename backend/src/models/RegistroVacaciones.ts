@@ -1,3 +1,10 @@
+export type EstadoAprobacionSolicitud =
+  | "PENDIENTE_JEFE"
+  | "PENDIENTE_GH"
+  | "APROBADA"
+  | "RECHAZADA_JEFE"
+  | "RECHAZADA_GH";
+
 export interface RegistroVacaciones {
   id: number;
   empleado_id: number;
@@ -6,6 +13,7 @@ export interface RegistroVacaciones {
   dias_tomados: number;
   estado_constancia: string | null;
   observaciones: string | null;
+  estado_aprobacion?: EstadoAprobacionSolicitud | string;
   // Campos opcionales obtenidos por JOIN con empleados y periodos_vacaciones
   codigo_empleado?: string;
   nombre_completo?: string;

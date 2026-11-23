@@ -1,316 +1,314 @@
 <div class="sv-page">
-  <div class="sv-topbar">
-    <a routerLink="/home" class="sv-back-link">← Volver a Gestión Humana</a>
-    <button
-      type="button"
-      class="sv-btn-yellow"
-      [disabled]="cargando"
-      (click)="enviarSolicitud()"
-    >
-      {{ cargando ? 'Enviando...' : 'Enviar Solicitud' }}
-    </button>
-  </div>
+  <header class="sv-topbar">
+    <div class="sv-topbar-inner">
+      <div class="sv-brand">
+        <img src="/logoblanco.png" alt="Logo FFDL" class="sv-logo" />
+        <div class="sv-header-text">
+          <span class="sv-org">Fundación Fondo de Desarrollo Local de Guatemala</span>
+          <h1 class="sv-doc-title">Solicitud de Ausencia</h1>
+        </div>
+      </div>
 
-  <div class="sv-sheet">
-    <!-- Encabezado institucional -->
-    <div class="sv-header">
-      <img src="/logoblanco.png" alt="Logo FFDL" class="sv-logo" />
-      <div class="sv-header-text">
-        <div class="sv-org">Fundación Fondo de Desarrollo Local de Guatemala</div>
-        <h1 class="sv-doc-title">Solicitud de Ausencia</h1>
+      <div class="sv-topbar-actions">
+        <a routerLink="/home" class="sv-back-link">← Volver al Home</a>
       </div>
     </div>
+  </header>
 
-    <!-- Datos precargados automáticamente -->
-    <div class="sv-meta-grid">
-      <div class="sv-meta-item">
-        <label>Nombre Colaborador:</label>
-        <input type="text" [(ngModel)]="nombreColaborador" name="nombreColaborador" readonly />
+  <main class="sv-main">
+    <div class="sv-sheet">
+      <!-- Datos precargados automáticamente -->
+      <div class="sv-meta-grid">
+        <div class="sv-meta-item">
+          <label>Nombre Colaborador:</label>
+          <input type="text" [(ngModel)]="nombreColaborador" name="nombreColaborador" readonly />
+        </div>
+        <div class="sv-meta-item">
+          <label>Fecha:</label>
+          <input type="date" [(ngModel)]="fechaActual" name="fechaActual" readonly />
+        </div>
+        <div class="sv-meta-item">
+          <label>Sucursal:</label>
+          <input type="text" [(ngModel)]="sucursal" name="sucursal" readonly />
+        </div>
+        <div class="sv-meta-item">
+          <label>Cargo:</label>
+          <input type="text" [(ngModel)]="cargo" name="cargo" readonly />
+        </div>
       </div>
-      <div class="sv-meta-item">
-        <label>Fecha:</label>
-        <input type="date" [(ngModel)]="fechaActual" name="fechaActual" readonly />
+
+      <p class="sv-intro">
+        Por este medio se reporta ausencia según detalle a continuación.
+      </p>
+
+      <!-- Tabla de detalle -->
+      <div class="sv-table-wrap">
+        <table class="sv-table">
+          <thead>
+            <tr>
+              <th>Fecha de ausencia</th>
+              <th>Horario de ausencia</th>
+              <th>Número de días u horas solicitadas</th>
+              <th>Motivo</th>
+              <th class="sv-col-action"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let fila of filas; let i = index">
+              <td>
+                <input
+                  type="date"
+                  [(ngModel)]="fila.fecha_ausencia"
+                  [name]="'fecha_ausencia_' + i"
+                  required
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  placeholder="Ej. 08:00 - 17:00 o Jornada completa"
+                  [(ngModel)]="fila.horario_ausencia"
+                  [name]="'horario_ausencia_' + i"
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  placeholder="Ej. 3 días o 4 horas"
+                  [(ngModel)]="fila.dias_horas_solicitadas"
+                  [name]="'dias_horas_' + i"
+                  required
+                />
+              </td>
+              <td>
+                <input
+                  type="text"
+                  placeholder="Ej. Vacaciones"
+                  [(ngModel)]="fila.motivo"
+                  [name]="'motivo_' + i"
+                />
+              </td>
+              <td class="sv-col-action">
+                <button
+                  type="button"
+                  class="sv-remove-btn"
+                  *ngIf="filas.length > 1"
+                  (click)="eliminarFila(i)"
+                  title="Quitar fila"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="sv-meta-item">
-        <label>Sucursal:</label>
-        <input type="text" [(ngModel)]="sucursal" name="sucursal" readonly />
+
+      <div class="sv-add-row-wrap">
+        <button type="button" class="sv-add-btn" (click)="agregarFila()">
+          + Agregar otra fecha / fila
+        </button>
       </div>
-      <div class="sv-meta-item">
-        <label>Cargo:</label>
-        <input type="text" [(ngModel)]="cargo" name="cargo" readonly />
+
+      <!-- Sección de selección con "X" -->
+      <p class="sv-intro">
+        A continuación seleccionar en cada columna la opción que corresponda con una X:
+      </p>
+
+      <div class="sv-checks-grid">
+        <!-- Columna 1: Modalidad / Horario -->
+        <div class="sv-check-col">
+          <div class="sv-check-row">
+            <span>Ausencia con trabajo desde casa en horario normal</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="modalidadHorario === 'trabajo_casa'"
+              (click)="modalidadHorario = modalidadHorario === 'trabajo_casa' ? '' : 'trabajo_casa'"
+            >
+              {{ modalidadHorario === 'trabajo_casa' ? 'X' : '' }}
+            </button>
+          </div>
+
+          <div class="sv-check-row">
+            <span>Ausencia con reposición de tiempo fuera de horario laboral</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="modalidadHorario === 'reposicion_tiempo'"
+              (click)="modalidadHorario = modalidadHorario === 'reposicion_tiempo' ? '' : 'reposicion_tiempo'"
+            >
+              {{ modalidadHorario === 'reposicion_tiempo' ? 'X' : '' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Columna 2: Goce de salario -->
+        <div class="sv-check-col">
+          <div class="sv-check-row">
+            <span>Con goce de salario</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="condicionSalario === 'con_goce'"
+              (click)="condicionSalario = condicionSalario === 'con_goce' ? '' : 'con_goce'"
+            >
+              {{ condicionSalario === 'con_goce' ? 'X' : '' }}
+            </button>
+          </div>
+
+          <div class="sv-check-row">
+            <span>Sin goce de salario</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="condicionSalario === 'sin_goce'"
+              (click)="condicionSalario = condicionSalario === 'sin_goce' ? '' : 'sin_goce'"
+            >
+              {{ condicionSalario === 'sin_goce' ? 'X' : '' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Columna 3: Coordinación / Aviso -->
+        <div class="sv-check-col">
+          <div class="sv-check-row">
+            <span>Coordinación anticipada</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="tipoAviso === 'coordinacion_anticipada'"
+              (click)="tipoAviso = tipoAviso === 'coordinacion_anticipada' ? '' : 'coordinacion_anticipada'"
+            >
+              {{ tipoAviso === 'coordinacion_anticipada' ? 'X' : '' }}
+            </button>
+          </div>
+
+          <div class="sv-check-row">
+            <span>Aviso posterior</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="tipoAviso === 'aviso_posterior'"
+              (click)="tipoAviso = tipoAviso === 'aviso_posterior' ? '' : 'aviso_posterior'"
+            >
+              {{ tipoAviso === 'aviso_posterior' ? 'X' : '' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Columna 4: IGSS / Vacaciones -->
+        <div class="sv-check-col">
+          <div class="sv-check-row">
+            <span>IGSS</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="tipoMotivoEspecial === 'igss'"
+              (click)="seleccionarMotivoEspecial('igss')"
+            >
+              {{ tipoMotivoEspecial === 'igss' ? 'X' : '' }}
+            </button>
+          </div>
+
+          <div class="sv-check-row">
+            <span>Vacaciones</span>
+            <button
+              type="button"
+              class="sv-x-box"
+              [class.is-checked]="tipoMotivoEspecial === 'vacaciones'"
+              (click)="seleccionarMotivoEspecial('vacaciones')"
+            >
+              {{ tipoMotivoEspecial === 'vacaciones' ? 'X' : '' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Importante: días disponibles y observaciones -->
+      <div class="sv-important-box">
+        <div class="sv-important-title">Importante:</div>
+        <div class="sv-disponibles-row">
+          <label for="diasDisponibles">
+            Anotar número de días disponibles de vacaciones a fecha del formato:
+          </label>
+          <input
+            id="diasDisponibles"
+            type="number"
+            min="0"
+            step="0.5"
+            [(ngModel)]="diasDisponiblesVacaciones"
+            name="diasDisponiblesVacaciones"
+          />
+        </div>
+
+        <div class="sv-obs-wrap">
+          <label for="observaciones">Observaciones:</label>
+          <textarea
+            id="observaciones"
+            rows="3"
+            [(ngModel)]="observaciones"
+            name="observaciones"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Firmas y Vo. Bo. -->
+      <div class="sv-signatures-grid">
+        <div class="sv-sig-block">
+          <input
+            type="text"
+            class="sv-sig-line-input"
+            placeholder="Firma o código de confirmación"
+            [(ngModel)]="firmaColaborador"
+            name="firmaColaborador"
+          />
+          <span class="sv-sig-caption">Firma del colaborador</span>
+
+          <input
+            type="text"
+            class="sv-sig-name-input"
+            [(ngModel)]="nombreColaborador"
+            name="nombreColaboradorFirma"
+            readonly
+          />
+          <span class="sv-sig-caption">Nombre colaborador</span>
+        </div>
+
+        <div class="sv-sig-block">
+          <input
+            type="text"
+            class="sv-sig-line-input"
+            placeholder="Vo. Bo. Jefe inmediato"
+            [(ngModel)]="firmaJefeInmediato"
+            name="firmaJefeInmediato"
+          />
+          <span class="sv-sig-caption">Vo. Bo. Jefe inmediato</span>
+
+          <input
+            type="text"
+            class="sv-sig-name-input"
+            [(ngModel)]="nombreJefeInmediato"
+            name="nombreJefeInmediato"
+            readonly
+          />
+          <span class="sv-sig-caption">Nombre de jefe inmediato</span>
+        </div>
+      </div>
+
+      <p class="sv-msg sv-error" *ngIf="mensajeError">{{ mensajeError }}</p>
+      <p class="sv-msg sv-success" *ngIf="mensajeExito">{{ mensajeExito }}</p>
+
+      <div class="sv-footer-actions">
+        <button
+          type="button"
+          class="sv-btn-yellow"
+          [disabled]="cargando"
+          (click)="enviarSolicitud()"
+        >
+          {{ cargando ? 'Enviando solicitud...' : 'Enviar Solicitud de Ausencia' }}
+        </button>
       </div>
     </div>
-
-    <p class="sv-intro">
-      Por este medio se reporta ausencia según detalle a continuación.
-    </p>
-
-    <!-- Tabla de detalle -->
-    <div class="sv-table-wrap">
-      <table class="sv-table">
-        <thead>
-          <tr>
-            <th>Fecha de ausencia</th>
-            <th>Horario de ausencia</th>
-            <th>Número de días u horas solicitadas</th>
-            <th>Motivo</th>
-            <th class="sv-col-action"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let fila of filas; let i = index">
-            <td>
-              <input
-                type="date"
-                [(ngModel)]="fila.fecha_ausencia"
-                [name]="'fecha_ausencia_' + i"
-                required
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                placeholder="Ej. 08:00 - 17:00 o Jornada completa"
-                [(ngModel)]="fila.horario_ausencia"
-                [name]="'horario_ausencia_' + i"
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                placeholder="Ej. 3 días o 4 horas"
-                [(ngModel)]="fila.dias_horas_solicitadas"
-                [name]="'dias_horas_' + i"
-                required
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                placeholder="Ej. Vacaciones"
-                [(ngModel)]="fila.motivo"
-                [name]="'motivo_' + i"
-              />
-            </td>
-            <td class="sv-col-action">
-              <button
-                type="button"
-                class="sv-remove-btn"
-                *ngIf="filas.length > 1"
-                (click)="eliminarFila(i)"
-                title="Quitar fila"
-              >
-                
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="sv-add-row-wrap">
-      <button type="button" class="sv-add-btn" (click)="agregarFila()">
-        + Agregar otra fecha / fila
-      </button>
-    </div>
-
-    <!-- Sección de selección con "X" -->
-    <p class="sv-intro">
-      A continuación seleccionar en cada columna la opción que corresponda con una X:
-    </p>
-
-    <div class="sv-checks-grid">
-      <!-- Columna 1: Modalidad / Horario -->
-      <div class="sv-check-col">
-        <div class="sv-check-row">
-          <span>Ausencia con trabajo desde casa en horario normal</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="modalidadHorario === 'trabajo_casa'"
-            (click)="modalidadHorario = modalidadHorario === 'trabajo_casa' ? '' : 'trabajo_casa'"
-          >
-            {{ modalidadHorario === 'trabajo_casa' ? 'X' : '' }}
-          </button>
-        </div>
-
-        <div class="sv-check-row">
-          <span>Ausencia con reposición de tiempo fuera de horario laboral</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="modalidadHorario === 'reposicion_tiempo'"
-            (click)="modalidadHorario = modalidadHorario === 'reposicion_tiempo' ? '' : 'reposicion_tiempo'"
-          >
-            {{ modalidadHorario === 'reposicion_tiempo' ? 'X' : '' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Columna 2: Goce de salario -->
-      <div class="sv-check-col">
-        <div class="sv-check-row">
-          <span>Con goce de salario</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="condicionSalario === 'con_goce'"
-            (click)="condicionSalario = condicionSalario === 'con_goce' ? '' : 'con_goce'"
-          >
-            {{ condicionSalario === 'con_goce' ? 'X' : '' }}
-          </button>
-        </div>
-
-        <div class="sv-check-row">
-          <span>Sin goce de salario</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="condicionSalario === 'sin_goce'"
-            (click)="condicionSalario = condicionSalario === 'sin_goce' ? '' : 'sin_goce'"
-          >
-            {{ condicionSalario === 'sin_goce' ? 'X' : '' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Columna 3: Coordinación / Aviso -->
-      <div class="sv-check-col">
-        <div class="sv-check-row">
-          <span>Coordinación anticipada</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="tipoAviso === 'coordinacion_anticipada'"
-            (click)="tipoAviso = tipoAviso === 'coordinacion_anticipada' ? '' : 'coordinacion_anticipada'"
-          >
-            {{ tipoAviso === 'coordinacion_anticipada' ? 'X' : '' }}
-          </button>
-        </div>
-
-        <div class="sv-check-row">
-          <span>Aviso posterior</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="tipoAviso === 'aviso_posterior'"
-            (click)="tipoAviso = tipoAviso === 'aviso_posterior' ? '' : 'aviso_posterior'"
-          >
-            {{ tipoAviso === 'aviso_posterior' ? 'X' : '' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Columna 4: IGSS / Vacaciones -->
-      <div class="sv-check-col">
-        <div class="sv-check-row">
-          <span>IGSS</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="tipoMotivoEspecial === 'igss'"
-            (click)="seleccionarMotivoEspecial('igss')"
-          >
-            {{ tipoMotivoEspecial === 'igss' ? 'X' : '' }}
-          </button>
-        </div>
-
-        <div class="sv-check-row">
-          <span>Vacaciones</span>
-          <button
-            type="button"
-            class="sv-x-box"
-            [class.is-checked]="tipoMotivoEspecial === 'vacaciones'"
-            (click)="seleccionarMotivoEspecial('vacaciones')"
-          >
-            {{ tipoMotivoEspecial === 'vacaciones' ? 'X' : '' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Importante: días disponibles y observaciones -->
-    <div class="sv-important-box">
-      <div class="sv-important-title">Importante:</div>
-      <div class="sv-disponibles-row">
-        <label for="diasDisponibles">
-          Anotar número de días disponibles de vacaciones a fecha del formato:
-        </label>
-        <input
-          id="diasDisponibles"
-          type="number"
-          min="0"
-          step="0.5"
-          [(ngModel)]="diasDisponiblesVacaciones"
-          name="diasDisponiblesVacaciones"
-        />
-      </div>
-
-      <div class="sv-obs-wrap">
-        <label for="observaciones">Observaciones:</label>
-        <textarea
-          id="observaciones"
-          rows="3"
-          [(ngModel)]="observaciones"
-          name="observaciones"
-        ></textarea>
-      </div>
-    </div>
-
-    <!-- Firmas y Vo. Bo. -->
-    <div class="sv-signatures-grid">
-      <div class="sv-sig-block">
-        <input
-          type="text"
-          class="sv-sig-line-input"
-          placeholder="Firma o código de confirmación"
-          [(ngModel)]="firmaColaborador"
-          name="firmaColaborador"
-        />
-        <span class="sv-sig-caption">Firma del colaborador</span>
-
-        <input
-          type="text"
-          class="sv-sig-name-input"
-          [(ngModel)]="nombreColaborador"
-          name="nombreColaboradorFirma"
-          readonly
-        />
-        <span class="sv-sig-caption">Nombre colaborador</span>
-      </div>
-
-      <div class="sv-sig-block">
-        <input
-          type="text"
-          class="sv-sig-line-input"
-          placeholder="Vo. Bo. Jefe inmediato"
-          [(ngModel)]="firmaJefeInmediato"
-          name="firmaJefeInmediato"
-        />
-        <span class="sv-sig-caption">Vo. Bo. Jefe inmediato</span>
-
-        <input
-          type="text"
-          class="sv-sig-name-input"
-          [(ngModel)]="nombreJefeInmediato"
-          name="nombreJefeInmediato"
-          readonly
-        />
-        <span class="sv-sig-caption">Nombre de jefe inmediato</span>
-      </div>
-
-    <p class="sv-msg sv-error" *ngIf="mensajeError">{{ mensajeError }}</p>
-    <p class="sv-msg sv-success" *ngIf="mensajeExito">{{ mensajeExito }}</p>
-
-    <div class="sv-footer-actions">
-      <button
-        type="button"
-        class="sv-btn-yellow"
-        [disabled]="cargando"
-        (click)="enviarSolicitud()"
-      >
-        {{ cargando ? 'Enviando solicitud...' : 'Enviar Solicitud de Ausencia' }}
-      </button>
-    </div>
-  </div>
+  </main>
 </div>
