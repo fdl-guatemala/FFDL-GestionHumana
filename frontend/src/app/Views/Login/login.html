@@ -1,0 +1,40 @@
+<div class="login-page">
+    <div class="login-panel">
+
+        <!-- Panel de marca (cuadro azul: ahora lleva el logo) -->
+         <div class="login-brand">
+            <img src="/logoblanco.png" alt="Logo FFDL" class="brand-logo-img">
+            <p class="login-brand-subtitle">Sistema institucional para la administración de colaboradores, accesos,
+                periodos y registro de vacaciones.
+            </p>
+
+            <ul class="login-brand-features">
+                <li>✓ Control de empleados y accesos.</li>
+                <li>✓ Gestión de periodos de vacaciones.</li>
+                <li>✓ Registro y consulta en tiempo real.</li>
+            </ul>
+         </div>
+
+         <!-- Panel de Formulario (cuadro gris suave: ahora lleva "Gestión Humana") -->
+          <div class="login-form-panel">
+            <h1 class="login-brand-title">Gestión Humana</h1>
+            <h2 class="login-title">Acceso al Sistema</h2>
+            <p class="login-subtitle">Inicie sesión en su cuenta corporativa</p>
+        
+            <form class="login-form" (ngSubmit)="iniciarSesion()">
+                <label class="login-label">Usuario o Codigo</label>
+                <input type="text" placeholder="001" [(ngModel)]="codigo_empleado" name="codigo_empleado">
+
+                <label class="login-label">Contraseña</label>
+                <input type="password" placeholder="••••••••" [(ngModel)]="contrasena" name="contrasena">
+            
+                <button type="submit" class="btn btn-primary login-submit">Iniciar sesión</button>
+            </form>
+
+            <div class="login-links">
+                <span class="login-links-sep">•</span>
+                <a routerLink="/registro">Crear cuenta</a>
+            </div>
+        </div>
+    </div>
+</div>

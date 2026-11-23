@@ -1,0 +1,168 @@
+<div class="emp-page">
+  <!-- Encabezado -->
+  <header class="emp-header">
+    <div class="emp-header-inner">
+      <div class="emp-brand">
+        <img src="/logoblanco.png" alt="Logo FFDL" class="emp-logo" />
+        <div>
+          <span class="emp-kicker">FFDL de Guatemala · Gestión Humana</span>
+          <h1 class="emp-title">Mi Expediente y Registro de Vacaciones</h1>
+        </div>
+      </div>
+
+      <div class="emp-actions">
+        <a routerLink="/home" class="emp-btn-outline">← Volver al Home</a>
+        <a routerLink="/solicitarvacaciones" class="emp-btn-yellow">
+          + Solicitar Vacaciones
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="emp-main" *ngIf="expediente() as exp">
+    <div class="emp-alert emp-alert-info" *ngIf="cargando()">
+      Cargando expediente personal desde la base de datos...
+    </div>
+
+    <div class="emp-alert emp-alert-warn" *ngIf="!cargando() && errorMensaje()">
+      {{ errorMensaje() }}
+    </div>
+
+    <!-- Datos Generales (precargados desde BD) -->
+    <section class="emp-card">
+      <div class="emp-card-head">
+        <div>
+          <span class="emp-section-tag">Expediente Personal</span>
+          <h2>Datos Generales</h2>
+        </div>
+        <span class="emp-privacy-tag">Solo visible para tu usuario</span>
+      </div>
+
+      <div class="emp-datos-grid">
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Nombre</span>
+          <strong class="emp-dato-value">{{ exp.nombre }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Puesto</span>
+          <strong class="emp-dato-value">{{ exp.puesto }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Ingreso</span>
+          <strong class="emp-dato-value">{{ exp.ingreso || '—' }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Egreso</span>
+          <strong class="emp-dato-value">{{ exp.egreso || 'Activo' }}</strong>
+        </div>
+
+        <div class="emp-dato-box" *ngIf="exp.sucursal">
+          <span class="emp-dato-label">Sucursal / Sede</span>
+          <strong class="emp-dato-value">{{ exp.sucursal }}</strong>
+        </div>
+
+        <div class="emp-dato-box" *ngIf="exp.codigo_empleado">
+          <span class="emp-dato-label">Código de empleado</span>
+          <strong class="emp-dato-value">{{ exp.codigo_empleado }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resumen general de días -->
+    <section class="emp-summary-grid">
+      <div class="emp-summary-card">
+        <span class="emp-summary-label">Días disponibles acumulados</span>
+        <strong class="emp-summary-num">{{ totalDiasDisponiblesGeneral() | number:'1.2-2' }}</strong>
+      </div>
+
+      <div class="emp-summary-card emp-summary-gold">
+        <span class="emp-summary-label">Total de días gozados</span>
+        <strong class="emp-summary-num">{{ totalDiasGozadosGeneral() | number:'1.2-2' }}</strong>
+      </div>
+    </section>
+
+    <!-- Registro de vacaciones por periodos -->
+    <section class="emp-card">
+      <div class="emp-card-head">
+        <div>
+          <span class="emp-section-tag">Historial de Periodos</span>
+          <h2>Registro de vacaciones</h2>
+        </div>
+      </div>
+
+      <div class="emp-empty" *ngIf="exp.periodos.length === 0">
+        Aún no hay periodos de vacaciones registrados en tu expediente.
+      </div>
+
+      <!-- Selector de periodos -->
+      <div class="emp-periodos-tabs" *ngIf="exp.periodos.length > 0">
+        <button
+          type="button"
+          class="emp-periodo-tab"
+          *ngFor="let p of exp.periodos; let i = index"
+          [class.is-active]="periodoActivoIndex() === i"
+          (click)="seleccionarPeriodo(i)"
+        >
+          <span>Periodo {{ p.periodo_inicio }} al {{ p.periodo_fin }}</span>
+          <small>Disp: {{ p.dias_disponibles | number:'1.2-2' }}</small>
+        </button>
+      </div>
+
+      <!-- Detalle del periodo seleccionado -->
+      <div class="emp-periodo-box" *ngIf="periodoSeleccionado() as per">
+        <div class="emp-periodo-header">
+          <div class="emp-periodo-rango">
+            <span>Periodo</span>
+            <strong>{{ per.periodo_inicio }}</strong>
+            <span>al</span>
+            <strong>{{ per.periodo_fin }}</strong>
+          </div>
+
+          <div class="emp-periodo-metrics">
+            <div class="emp-metric">
+              <span>Días disponibles</span>
+              <strong>{{ per.dias_disponibles | number:'1.2-2' }}</strong>
+            </div>
+            <div class="emp-metric">
+              <span>Total de días gozados</span>
+              <strong>{{ per.total_dias_gozados | number:'1.2-2' }}</strong>
+            </div>
+            <div class="emp-metric">
+              <span>Finiquito de vacaciones</span>
+              <span class="emp-finiquito-pill">{{ per.finiquito_vacaciones || 'Pendiente' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de movimientos / constancias del periodo -->
+        <div class="emp-table-wrap" *ngIf="per.movimientos && per.movimientos.length > 0">
+          <table class="emp-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Fecha</th>
+                <th>Horas Solicitadas</th>
+                <th>Tiempo de vacaciones</th>
+                <th>Estado de la constancia</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let mov of per.movimientos">
+                <td>{{ mov.no }}</td>
+                <td>{{ mov.fecha }}</td>
+                <td>{{ mov.horas_solicitadas || '—' }}</td>
+                <td><strong>{{ mov.tiempo_vacaciones | number:'1.2-3' }}</strong></td>
+                <td>{{ mov.estado_constancia }}</td>
+                <td>{{ mov.observaciones || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

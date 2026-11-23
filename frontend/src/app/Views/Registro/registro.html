@@ -1,0 +1,94 @@
+<div class="registro-page">
+  <div class="registro-panel">
+
+    <!-- Panel izquierdo: marca institucional -->
+    <div class="registro-brand">
+      <img src="/logoblanco.png" alt="Logo FFDL" class="brand-logo-img" />
+      <p class="registro-brand-subtitle">
+        Registro de cuenta corporativa para el sistema de administración de
+        colaboradores, accesos, periodos y control de vacaciones.
+      </p>
+
+      <ul class="registro-brand-features">
+        <li>✓ Selección de oficina central o sucursal.</li>
+        <li>✓ Validación y asignación de código por Gestión Humana.</li>
+        <li>✓ Gestión centralizada de solicitudes.</li>
+      </ul>
+    </div>
+
+    <!-- Panel derecho: formulario de registro -->
+    <div class="registro-form-panel">
+      <h1 class="registro-brand-title">Gestión Humana</h1>
+      <h2 class="registro-title">Crear Cuenta</h2>
+      <p class="registro-subtitle">
+        Seleccione su sede para solicitar acceso al sistema
+      </p>
+
+      <form class="registro-form" (ngSubmit)="registrarUsuario()" #registroForm="ngForm">
+        <label class="registro-label" for="sucursal">Oficina Central o Sucursal</label>
+        <select
+          id="sucursal"
+          [(ngModel)]="sucursal"
+          name="sucursal"
+          required
+        >
+          <option value="" disabled selected>Seleccione una opción</option>
+          <option *ngFor="let sede of sucursales" [value]="sede">
+            {{ sede }}
+          </option>
+        </select>
+
+        <label class="registro-label" for="correo">Correo Corporativo</label>
+        <input
+          id="correo"
+          type="email"
+          placeholder="nombre@ffdlguatemala.com"
+          [(ngModel)]="correo"
+          name="correo"
+          required
+        />
+
+        <label class="registro-label" for="contrasena">Contraseña</label>
+        <input
+          id="contrasena"
+          type="password"
+          placeholder="••••••••"
+          [(ngModel)]="contrasena"
+          name="contrasena"
+          required
+        />
+
+        <label class="registro-label" for="confirmarContrasena">Confirmar Contraseña</label>
+        <input
+          id="confirmarContrasena"
+          type="password"
+          placeholder="••••••••"
+          [(ngModel)]="confirmarContrasena"
+          name="confirmarContrasena"
+          required
+        />
+
+        <p class="registro-msg registro-error" *ngIf="mensajeError">
+          {{ mensajeError }}
+        </p>
+        <p class="registro-msg registro-success" *ngIf="mensajeExito">
+          {{ mensajeExito }}
+        </p>
+
+        <button
+          type="submit"
+          class="registro-submit"
+          [disabled]="cargando"
+        >
+          {{ cargando ? 'Enviando solicitud...' : 'Solicitar Cuenta' }}
+        </button>
+      </form>
+
+      <div class="registro-links">
+        <span class="registro-links-sep">•</span>
+        <a routerLink="/login">Ya tengo cuenta — Iniciar sesión</a>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,217 @@
+<div class="pv-page">
+  <!-- Barra superior -->
+  <header class="pv-header">
+    <div class="pv-header-inner">
+      <div class="pv-brand-group">
+        <img src="/logoblanco.png" alt="Logo FFDL" class="pv-logo" />
+        <div>
+          <span class="pv-kicker">FFDL de Guatemala · Gestión Humana</span>
+          <h1 class="pv-title">Proceso de Vacaciones</h1>
+        </div>
+      </div>
+
+      <div class="pv-actions">
+        <a routerLink="/home" class="pv-btn-outline">← Volver al Home</a>
+        <a routerLink="/solicitarvacaciones" class="pv-btn-yellow">
+          + Solicitar Vacaciones
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="pv-main">
+    <!-- Línea de tiempo del proceso -->
+    <section class="pv-timeline-card">
+      <div class="pv-timeline-top">
+        <div>
+          <span class="pv-section-kicker">Seguimiento en tiempo real</span>
+          <h2 class="pv-timeline-heading">
+            Estado de tu proceso
+            <span *ngIf="solicitudSeleccionada() as sel">· Solicitud #{{ sel.id }}</span>
+          </h2>
+        </div>
+
+        <span class="pv-timeline-dates" *ngIf="solicitudSeleccionada() as sel">
+          Fechas: <strong>{{ sel.rango_o_fechas }}</strong> ({{ sel.dias_horas }})
+        </span>
+      </div>
+
+      <div class="pv-timeline-track">
+        <div
+          class="pv-step"
+          *ngFor="let paso of pasosLineaTiempo()"
+          [class.is-completed]="paso.estadoPaso === 'completado'"
+          [class.is-current]="paso.estadoPaso === 'actual'"
+          [class.is-rejected]="paso.estadoPaso === 'rechazado'"
+        >
+          <div class="pv-step-head">
+            <div class="pv-step-circle">
+              <span *ngIf="paso.estadoPaso === 'completado'">✓</span>
+              <span *ngIf="paso.estadoPaso === 'rechazado'">✕</span>
+              <span *ngIf="paso.estadoPaso === 'actual' || paso.estadoPaso === 'pendiente'">
+                {{ paso.numero }}
+              </span>
+            </div>
+            <div class="pv-step-line"></div>
+          </div>
+
+          <div class="pv-step-body">
+            <span class="pv-step-sub">{{ paso.subtitulo }}</span>
+            <h3 class="pv-step-title">{{ paso.titulo }}</h3>
+            <p class="pv-step-msg">{{ paso.mensaje }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pv-timeline-obs" *ngIf="solicitudSeleccionada()?.observaciones as obs">
+        <strong>Observaciones registradas:</strong> {{ obs }}
+      </div>
+    </section>
+
+    <!-- Resumen rápido -->
+    <section class="pv-stats-grid">
+      <div class="pv-stat-card">
+        <span class="pv-stat-label">Total de solicitudes</span>
+        <strong class="pv-stat-value">{{ solicitudes().length }}</strong>
+      </div>
+
+      <div class="pv-stat-card pv-stat-pending">
+        <span class="pv-stat-label">Pendientes / En revisión</span>
+        <strong class="pv-stat-value">{{ totalPendientes() }}</strong>
+      </div>
+
+      <div class="pv-stat-card pv-stat-approved">
+        <span class="pv-stat-label">Aprobadas</span>
+        <strong class="pv-stat-value">{{ totalAprobadas() }}</strong>
+      </div>
+    </section>
+
+    <!-- Filtros -->
+    <section class="pv-toolbar">
+      <div class="pv-filter-pills">
+        <button
+          type="button"
+          class="pv-pill"
+          [class.is-active]="filtroEstado() === 'TODAS'"
+          (click)="filtroEstado.set('TODAS')"
+        >
+          Todas
+        </button>
+        <button
+          type="button"
+          class="pv-pill"
+          [class.is-active]="filtroEstado() === 'Pendiente'"
+          (click)="filtroEstado.set('Pendiente')"
+        >
+          Pendiente
+        </button>
+        <button
+          type="button"
+          class="pv-pill"
+          [class.is-active]="filtroEstado() === 'En revisión'"
+          (click)="filtroEstado.set('En revisión')"
+        >
+          En revisión
+        </button>
+        <button
+          type="button"
+          class="pv-pill"
+          [class.is-active]="filtroEstado() === 'Aprobada'"
+          (click)="filtroEstado.set('Aprobada')"
+        >
+          Aprobada
+        </button>
+        <button
+          type="button"
+          class="pv-pill"
+          [class.is-active]="filtroEstado() === 'Rechazada'"
+          (click)="filtroEstado.set('Rechazada')"
+        >
+          Rechazada
+        </button>
+      </div>
+
+      <div class="pv-search-wrap">
+        <input
+          type="text"
+          placeholder="Buscar por fecha, motivo o estado..."
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+        />
+        <button type="button" class="pv-btn-refresh" (click)="cargarSolicitudes()">
+          Actualizar
+        </button>
+      </div>
+    </section>
+
+    <!-- Estados de carga / error / vacío -->
+    <div class="pv-alert pv-alert-info" *ngIf="cargando()">
+      Cargando proceso de vacaciones...
+    </div>
+
+    <div class="pv-alert pv-alert-error" *ngIf="!cargando() && errorMensaje()">
+      {{ errorMensaje() }}
+    </div>
+
+    <div
+      class="pv-empty-box"
+      *ngIf="!cargando() && !errorMensaje() && solicitudesFiltradas().length === 0"
+    >
+      <p>No hay solicitudes registradas con el filtro actual.</p>
+      <a routerLink="/solicitarvacaciones" class="pv-btn-yellow">
+        Crear nueva solicitud
+      </a>
+    </div>
+
+    <!-- Tabla de solicitudes -->
+    <section
+      class="pv-table-card"
+      *ngIf="!cargando() && solicitudesFiltradas().length > 0"
+    >
+      <div class="pv-table-wrap">
+        <table class="pv-table">
+          <thead>
+            <tr>
+              <th>Fecha solicitud</th>
+              <th>Fecha(s) ausencia</th>
+              <th>Días / Horas</th>
+              <th>Motivo</th>
+              <th>Estado</th>
+              <th>Seguimiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let item of solicitudesFiltradas()"
+              [class.is-selected-row]="solicitudSeleccionada()?.id === item.id"
+            >
+              <td>{{ item.fecha_solicitud }}</td>
+              <td>{{ item.rango_o_fechas }}</td>
+              <td><strong>{{ item.dias_horas }}</strong></td>
+              <td>{{ item.motivo }}</td>
+              <td>
+                <span
+                  class="pv-badge"
+                  [class.is-pending]="item.estado === 'Pendiente' || item.estado === 'En revisión'"
+                  [class.is-approved]="item.estado === 'Aprobada'"
+                  [class.is-rejected]="item.estado === 'Rechazada'"
+                >
+                  {{ item.estado }}
+                </span>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="pv-btn-detail"
+                  (click)="seleccionarSolicitud(item)"
+                >
+                  Ver línea de tiempo
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>

@@ -1,0 +1,72 @@
+<div class="gh-shell">
+  <!-- Barra lateral institucional -->
+  <aside class="gh-sidebar">
+    <div class="gh-sidebar-top">
+      <img src="/logoblanco.png" alt="Logo FFDL" class="gh-logo" />
+      <span class="gh-org">FFDL de Guatemala</span>
+      <h1 class="gh-app-name">Gestión Humana</h1>
+    </div>
+
+    <nav class="gh-nav">
+      <span class="gh-nav-label">Módulos principales</span>
+      <a
+        *ngFor="let modulo of modulos"
+        [routerLink]="modulo.ruta"
+        routerLinkActive="is-active"
+        class="gh-nav-item"
+      >
+        <span class="gh-nav-dot"></span>
+        <span>{{ modulo.titulo }}</span>
+      </a>
+    </nav>
+
+    <div class="gh-sidebar-footer" *ngIf="usuario() as u">
+      <div class="gh-profile-card">
+        <div class="gh-profile-name">{{ u.nombre_completo || u.codigo_empleado }}</div>
+        <div class="gh-profile-sub">
+          {{ u.lugar || 'Sede por asignar' }} · Cód. {{ u.codigo_empleado }}
+        </div>
+      </div>
+
+      <button type="button" class="gh-logout-btn" (click)="cerrarSesion()">
+        Cerrar sesión
+      </button>
+    </div>
+  </aside>
+
+  <!-- Área principal -->
+  <div class="gh-content-wrap">
+    <header class="gh-topbar">
+      <div>
+        <span class="gh-kicker">Panel de Control</span>
+        <h2 class="gh-heading">Bienvenido a Gestión Humana</h2>
+      </div>
+
+      <div class="gh-status-pill" *ngIf="usuario() as u">
+        <span class="gh-status-dot" [class.is-inactive]="!u.activo"></span>
+        <span>{{ u.activo ? 'Cuenta activa' : 'Pendiente de validación' }}</span>
+      </div>
+    </header>
+
+    <main class="gh-main">
+      <p class="gh-intro">
+        Selecciona el módulo con el que deseas trabajar hoy:
+      </p>
+
+      <section class="gh-cards-grid">
+        <article class="gh-card" *ngFor="let modulo of modulos">
+          <div class="gh-card-body">
+            <span class="gh-card-badge">{{ modulo.etiqueta }}</span>
+            <h3 class="gh-card-title">{{ modulo.titulo }}</h3>
+            <p class="gh-card-desc">{{ modulo.descripcion }}</p>
+          </div>
+
+          <a [routerLink]="modulo.ruta" class="gh-btn-yellow">
+            <span>Abrir módulo</span>
+            <span class="gh-btn-arrow">→</span>
+          </a>
+        </article>
+      </section>
+    </main>
+  </div>
+</div>
