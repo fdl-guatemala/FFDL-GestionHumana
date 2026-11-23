@@ -93,24 +93,28 @@ export class EmpleadoController {
     }
   };
 
-  eliminar = async (req: Request, res: Response): Promise<void> => {
+  eliminarPorCodigo = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        res.status(400).json({ message: "ID de empleado inválido" });
+      const codigo = String(
+        req.params.codigo ?? req.query.codigo_empleado ?? req.body?.codigo_empleado ?? ""
+      ).trim();
+
+      if (!codigo) {
+        res.status(400).json({ message: "El código de empleado es obligatorio" });
         return;
       }
 
-      const resultado = await this.empleadoService.eliminarEmpleado(id);
+      const resultado = await this.empleadoService.eliminarEmpleadoPorCodigo(codigo);
       res.status(200).json(resultado);
     } catch (error) {
       const mensaje =
         error instanceof Error ? error.message : "Error al eliminar empleado";
-      const status = mensaje === "Empleado no encontrado" ? 404 : 500;
+      let status = 500;
+      if (mensaje === "Empleado no encontrado") status = 404;
+      else if (mensaje.includes("obligatorio")) status = 400;
       res.status(status).json({ message: mensaje });
     }
   };
-
   generarFiniquito = async (req: Request, res: Response): Promise<void> => {
     try {
       const id = Number(req.params.id);

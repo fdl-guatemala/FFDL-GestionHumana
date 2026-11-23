@@ -9,15 +9,16 @@
 
     <nav class="gh-nav">
       <span class="gh-nav-label">Módulos principales</span>
-      <a
-        *ngFor="let modulo of modulos"
-        [routerLink]="modulo.ruta"
-        routerLinkActive="is-active"
+      <button
+        type="button"
+        *ngFor="let modulo of modulos()"
+        (click)="abrirModulo(modulo.ruta)"
+        [class.is-active]="estaEnRuta(modulo.ruta)"
         class="gh-nav-item"
       >
         <span class="gh-nav-dot"></span>
         <span>{{ modulo.titulo }}</span>
-      </a>
+      </button>
     </nav>
 
     <div class="gh-sidebar-footer" *ngIf="usuario() as u">
@@ -54,17 +55,21 @@
       </p>
 
       <section class="gh-cards-grid">
-        <article class="gh-card" *ngFor="let modulo of modulos">
+        <article class="gh-card" *ngFor="let modulo of modulos()">
           <div class="gh-card-body">
             <span class="gh-card-badge">{{ modulo.etiqueta }}</span>
             <h3 class="gh-card-title">{{ modulo.titulo }}</h3>
             <p class="gh-card-desc">{{ modulo.descripcion }}</p>
           </div>
 
-          <a [routerLink]="modulo.ruta" class="gh-btn-yellow">
+          <button
+            type="button"
+            class="gh-btn-yellow"
+            (click)="abrirModulo(modulo.ruta)"
+          >
             <span>Abrir módulo</span>
             <span class="gh-btn-arrow">→</span>
-          </a>
+          </button>
         </article>
       </section>
     </main>

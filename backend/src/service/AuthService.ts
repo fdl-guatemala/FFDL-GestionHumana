@@ -1,7 +1,7 @@
 import { UsuarioRepository } from "../repositories/UsuarioRepository.ts";
 
 export interface RegistroUsuarioInput {
-  codigo_empleado: number;
+  codigo_empleado: string | number;
   contrasena: string;
   [key: string]: unknown;
 }
@@ -9,41 +9,50 @@ export interface RegistroUsuarioInput {
 export class AuthService {
   private repo = new UsuarioRepository();
 
-  async login(codigo_empleado: number, contrasena: string) {
-    const usuario = await this.repo.BuscarPorCodigo(codigo_empleado);
+  async login(codigo_empleado: string | number, contrasena: string) {
+    const usuario = await this.repo.buscarPorCodigo(codigo_empleado);
 
     if (!usuario) {
       return { exito: false, mensaje: "Usuario no encontrado" };
     }
 
-    // Si más adelante usas bcrypt, cambia esta línea por: await bcrypt.compare(contrasena, usuario.contrasena)
-    if (usuario.contrasena !== contrasena) {
+    const passwordGuardada = usuario.contrasena ?? usuario.password_hash;
+    if (passwordGuardada !== contrasena) {
       return { exito: false, mensaje: "Contraseña incorrecta" };
     }
 
-    if (usuario.estado_cuenta !== "activo") {
+    const estadoNormalizado = String(usuario.estado_cuenta ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (estadoNormalizado !== "activo") {
       return { exito: false, mensaje: "Cuenta no activa" };
     }
 
-    const { contrasena: _, ...usuarioSinPassword } = usuario;
-    return { exito: true, usuario: usuarioSinPassword };
+    const { contrasena: _, password_hash: __, ...usuarioSinPassword } = usuario;
+
+    return {
+      exito: true,
+      usuario: {
+        ...usuarioSinPassword,
+        activo: true,
+      },
+    };
   }
 
   async registro(datos: RegistroUsuarioInput) {
-    // 1. Verificar si el código de empleado ya está registrado
-    const usuarioExistente = await this.repo.BuscarPorCodigo(datos.codigo_empleado);
+    const usuarioExistente = await this.repo.buscarPorCodigo(datos.codigo_empleado);
 
     if (usuarioExistente) {
       return { exito: false, mensaje: "El código de empleado ya está registrado" };
     }
 
-    // 2. Crear el nuevo usuario
     try {
-      const idUsuario = await this.repo.crear(datos);
+      const creado = await this.repo.crear(datos);
       return {
         exito: true,
         mensaje: "Usuario registrado exitosamente",
-        empleado_id: idUsuario,
+        empleado_id: creado.id,
       };
     } catch (error) {
       console.error("Error en el servicio de registro:", error);

@@ -178,9 +178,17 @@ export class EmpleadoRepository {
     return result.affectedRows > 0;
   }
 
-  async eliminar(id: number): Promise<boolean> {
+ async eliminar(id: number): Promise<boolean> {
     const sql = `DELETE FROM empleados WHERE id = ?`;
     const [result] = await pool.query<ResultSetHeader>(sql, [id]);
+    return result.affectedRows > 0;
+  }
+
+  async eliminarPorCodigo(codigoEmpleado: string): Promise<boolean> {
+    const sql = `DELETE FROM empleados WHERE TRIM(UPPER(codigo_empleado)) = TRIM(UPPER(?))`;
+    const [result] = await pool.query<ResultSetHeader>(sql, [
+      codigoEmpleado.trim(),
+    ]);
     return result.affectedRows > 0;
   }
 }

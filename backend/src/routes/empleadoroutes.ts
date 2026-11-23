@@ -10,6 +10,7 @@ router.get("/:id", empleadoController.obtenerPorId);
 router.post("/", empleadoController.crear);
 router.post("/:id/finiquito", empleadoController.generarFiniquito);
 router.put("/:id", empleadoController.actualizar);
-router.delete("/:id", empleadoController.eliminar);
+router.delete("/codigo/:codigo", empleadoController.eliminarPorCodigo);
+
 
 export default router;

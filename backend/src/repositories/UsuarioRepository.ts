@@ -7,13 +7,16 @@ export class UsuarioRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT
          u.*,
-         e.nombre_completo,
-         e.puesto,
-         e.lugar,
+         e.*,
+         u.id AS id,
+         u.id AS usuario_id,
+         e.id AS empleado_registro_id,
+         u.codigo_empleado AS codigo_empleado,
          e.lugar AS sucursal
        FROM usuarios u
        LEFT JOIN empleados e
-         ON e.id = u.empleado_id OR TRIM(CAST(e.codigo_empleado AS CHAR)) = TRIM(CAST(u.codigo_empleado AS CHAR))
+         ON e.id = u.empleado_id
+         OR TRIM(CAST(e.codigo_empleado AS CHAR)) = TRIM(CAST(u.codigo_empleado AS CHAR))
        WHERE TRIM(CAST(u.codigo_empleado AS CHAR)) = ?
           OR TRIM(CAST(e.codigo_empleado AS CHAR)) = ?
        LIMIT 1`,
@@ -26,13 +29,16 @@ export class UsuarioRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT
          u.*,
-         e.nombre_completo,
-         e.puesto,
-         e.lugar,
+         e.*,
+         u.id AS id,
+         u.id AS usuario_id,
+         e.id AS empleado_registro_id,
+         u.codigo_empleado AS codigo_empleado,
          e.lugar AS sucursal
        FROM usuarios u
        LEFT JOIN empleados e
-         ON e.id = u.empleado_id OR e.codigo_empleado = u.codigo_empleado
+         ON e.id = u.empleado_id
+         OR TRIM(CAST(e.codigo_empleado AS CHAR)) = TRIM(CAST(u.codigo_empleado AS CHAR))
        WHERE u.id = ?
        LIMIT 1`,
       [id]
@@ -44,13 +50,16 @@ export class UsuarioRepository {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT
          u.*,
-         e.nombre_completo,
-         e.puesto,
-         e.lugar,
+         e.*,
+         u.id AS id,
+         u.id AS usuario_id,
+         e.id AS empleado_registro_id,
+         u.codigo_empleado AS codigo_empleado,
          e.lugar AS sucursal
        FROM usuarios u
        LEFT JOIN empleados e
-         ON e.id = u.empleado_id OR e.codigo_empleado = u.codigo_empleado`
+         ON e.id = u.empleado_id
+         OR TRIM(CAST(e.codigo_empleado AS CHAR)) = TRIM(CAST(u.codigo_empleado AS CHAR))`
     );
     return rows;
   }

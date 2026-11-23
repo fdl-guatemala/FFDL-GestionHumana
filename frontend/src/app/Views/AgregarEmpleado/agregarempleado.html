@@ -1,0 +1,156 @@
+<div class="ae-page">
+  <header class="ae-topbar">
+    <div class="ae-topbar-inner">
+      <div class="ae-brand">
+        <img src="/logoblanco.png" alt="Logo FFDL" class="ae-logo" />
+        <div>
+          <span class="ae-org">FFDL de Guatemala · Gestión Humana</span>
+          <h1 class="ae-doc-title">Agregar Nuevo Empleado</h1>
+        </div>
+      </div>
+
+      <div class="ae-topbar-actions">
+        <a routerLink="/home" class="ae-back-link">← Volver al Home</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="ae-main">
+    <section class="ae-sheet">
+      <form (ngSubmit)="guardarEmpleado()">
+        <div class="ae-section-box">
+          <h2 class="ae-section-title">Datos del colaborador</h2>
+
+          <div class="ae-grid">
+            <div class="ae-field">
+              <label for="codigo_empleado">Código de empleado</label>
+              <input
+                id="codigo_empleado"
+                type="text"
+                [(ngModel)]="empleado.codigo_empleado"
+                name="codigo_empleado"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="nombre_completo">Nombre completo</label>
+              <input
+                id="nombre_completo"
+                type="text"
+                [(ngModel)]="empleado.nombre_completo"
+                name="nombre_completo"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="puesto">Cargo / Puesto</label>
+              <input
+                id="puesto"
+                type="text"
+                [(ngModel)]="empleado.puesto"
+                name="puesto"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="lugar">Sede / Lugar</label>
+              <input
+                id="lugar"
+                type="text"
+                [(ngModel)]="empleado.lugar"
+                name="lugar"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="jefe_inmediato">Jefe inmediato</label>
+              <input
+                id="jefe_inmediato"
+                type="text"
+                [(ngModel)]="empleado.jefe_inmediato"
+                name="jefe_inmediato"
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="fecha_ingreso">Fecha de ingreso</label>
+              <input
+                id="fecha_ingreso"
+                type="date"
+                [(ngModel)]="empleado.fecha_ingreso"
+                name="fecha_ingreso"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="fecha_ingreso_prueba">Fecha ingreso prueba</label>
+              <input
+                id="fecha_ingreso_prueba"
+                type="date"
+                [(ngModel)]="empleado.fecha_ingreso_prueba"
+                name="fecha_ingreso_prueba"
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="estado">Estado</label>
+              <select id="estado" [(ngModel)]="empleado.estado" name="estado">
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <p class="ae-msg ae-error" *ngIf="mensajeError">{{ mensajeError }}</p>
+        <p class="ae-msg ae-success" *ngIf="mensajeExito">{{ mensajeExito }}</p>
+
+        <div class="ae-footer-actions">
+          <button type="submit" class="ae-btn-yellow" [disabled]="guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar en Base de Datos' }}
+          </button>
+        </div>
+      </form>
+
+      <hr class="ae-divider" />
+
+      <div class="ae-section-box ae-danger-box">
+        <h2 class="ae-section-title">Eliminar empleado por código</h2>
+
+        <div class="ae-delete-row">
+          <div class="ae-field ae-delete-input">
+            <label for="codigo_eliminar">Código de empleado</label>
+            <input
+              id="codigo_eliminar"
+              type="text"
+              [(ngModel)]="codigoEliminar"
+              name="codigoEliminar"
+              placeholder="Ej. EMP-001"
+            />
+          </div>
+
+          <button
+            type="button"
+            class="ae-btn-danger"
+            (click)="eliminarPorCodigo()"
+            [disabled]="eliminando"
+          >
+            {{ eliminando ? 'Eliminando...' : 'Eliminar por código' }}
+          </button>
+        </div>
+
+        <p class="ae-msg ae-error" *ngIf="mensajeEliminarError">
+          {{ mensajeEliminarError }}
+        </p>
+        <p class="ae-msg ae-success" *ngIf="mensajeEliminarExito">
+          {{ mensajeEliminarExito }}
+        </p>
+      </div>
+    </section>
+  </main>
+</div>

@@ -133,14 +133,29 @@ export class EmpleadoService {
     return this.empleadoRepo.obtenerPorId(id);
   }
 
-  async eliminarEmpleado(id: number) {
-    const eliminado = await this.empleadoRepo.eliminar(id);
-    if (!eliminado) {
+  async eliminarEmpleadoPorCodigo(codigoEmpleado: string) {
+    const codigoLimpio = String(codigoEmpleado ?? "").trim();
+    if (!codigoLimpio) {
+      throw new Error("El codigo_empleado es obligatorio para eliminar");
+    }
+
+    const empleado = await this.empleadoRepo.obtenerPorCodigo(codigoLimpio);
+    if (!empleado) {
       throw new Error("Empleado no encontrado");
     }
-    return { eliminado: true };
-  }
 
+    const eliminado = await this.empleadoRepo.eliminarPorCodigo(codigoLimpio);
+    if (!eliminado) {
+      throw new Error("No se pudo eliminar el empleado");
+    }
+
+    return {
+      eliminado: true,
+      codigo_empleado: codigoLimpio,
+      nombre_completo: empleado.nombre_completo,
+    };
+  }
+  
   async generarFiniquito(id: number, options?: OpcionesFiniquitoInput) {
     const empleado = await this.empleadoRepo.obtenerPorId(id);
     if (!empleado) {
