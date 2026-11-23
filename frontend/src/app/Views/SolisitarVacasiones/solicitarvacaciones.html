@@ -10,8 +10,8 @@
       </div>
 
       <div class="sv-topbar-actions">
-        <a routerLink="/home" class="sv-back-link">← Volver al Home</a>
-      </div>
+  <a routerLink="/home" class="sv-back-link">← Volver al Home</a>
+</div>
     </div>
   </header>
 
@@ -256,13 +256,28 @@
       <!-- Firmas y Vo. Bo. -->
       <div class="sv-signatures-grid">
         <div class="sv-sig-block">
-          <input
-            type="text"
-            class="sv-sig-line-input"
-            placeholder="Firma o código de confirmación"
-            [(ngModel)]="firmaColaborador"
-            name="firmaColaborador"
-          />
+          <div style="width: 100%; border: 1.5px solid #0f294a; border-radius: 8px; background: #fff; overflow: hidden;">
+            <canvas
+              #firmaCanvas
+              style="width: 100%; height: 95px; display: block; cursor: crosshair; touch-action: none;"
+              (mousedown)="iniciarTrazo($event)"
+              (mousemove)="dibujarTrazo($event)"
+              (mouseup)="finalizarTrazo()"
+              (mouseleave)="finalizarTrazo()"
+              (touchstart)="iniciarTrazo($event)"
+              (touchmove)="dibujarTrazo($event)"
+              (touchend)="finalizarTrazo()"
+            ></canvas>
+          </div>
+          <div style="margin-top: 6px; display: flex; justify-content: flex-end; width: 100%;">
+            <button
+              type="button"
+              (click)="limpiarFirma()"
+              style="font-size: 12px; padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; color: #0f294a; cursor: pointer;"
+            >
+              Limpiar firma
+            </button>
+          </div>
           <span class="sv-sig-caption">Firma del colaborador</span>
 
           <input
@@ -276,13 +291,28 @@
         </div>
 
         <div class="sv-sig-block">
-          <input
-            type="text"
-            class="sv-sig-line-input"
-            placeholder="Vo. Bo. Jefe inmediato"
-            [(ngModel)]="firmaJefeInmediato"
-            name="firmaJefeInmediato"
-          />
+          <div style="width: 100%; border: 1.5px solid #0f294a; border-radius: 8px; background: #fff; overflow: hidden;">
+            <canvas
+              #firmaJefeCanvas
+              style="width: 100%; height: 95px; display: block; cursor: crosshair; touch-action: none;"
+              (mousedown)="iniciarTrazoJefe($event)"
+              (mousemove)="dibujarTrazoJefe($event)"
+              (mouseup)="finalizarTrazoJefe()"
+              (mouseleave)="finalizarTrazoJefe()"
+              (touchstart)="iniciarTrazoJefe($event)"
+              (touchmove)="dibujarTrazoJefe($event)"
+              (touchend)="finalizarTrazoJefe()"
+            ></canvas>
+          </div>
+          <div style="margin-top: 6px; display: flex; justify-content: flex-end; width: 100%;">
+            <button
+              type="button"
+              (click)="limpiarFirmaJefe()"
+              style="font-size: 12px; padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; color: #0f294a; cursor: pointer;"
+            >
+              Limpiar firma
+            </button>
+          </div>
           <span class="sv-sig-caption">Vo. Bo. Jefe inmediato</span>
 
           <input

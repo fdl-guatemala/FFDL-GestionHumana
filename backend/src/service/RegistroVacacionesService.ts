@@ -6,10 +6,14 @@ import {
   type ActualizarRegistroVacacionesInput,
   type CrearRegistroVacacionesInput,
 } from "../repositories/RegistroVacacionesRepository.ts";
+import { FirmaRepository } from "../repositories/FirmaRepository.ts";
+import { generarHashFirma } from "../utils/firmaDigital.ts";
 
 export interface AprobarSolicitudPayload {
   aprobado_por?: string;
   observaciones?: string;
+  firma_texto?: string | null;
+  firma_base64?: string | null;
 }
 
 export class RegistroVacacionesService {
@@ -17,17 +21,20 @@ export class RegistroVacacionesService {
   private readonly periodoRepo: PeriodoVacacionesRepository;
   private readonly empleadoRepo: EmpleadoRepository;
   private readonly notificacionRepo: NotificacionRepository;
+  private readonly firmaRepo: FirmaRepository;
 
   constructor(
     registroRepo = new RegistroVacacionesRepository(),
     periodoRepo = new PeriodoVacacionesRepository(),
     empleadoRepo = new EmpleadoRepository(),
-    notificacionRepo = new NotificacionRepository()
+    notificacionRepo = new NotificacionRepository(),
+    firmaRepo = new FirmaRepository()
   ) {
     this.registroRepo = registroRepo;
     this.periodoRepo = periodoRepo;
     this.empleadoRepo = empleadoRepo;
     this.notificacionRepo = notificacionRepo;
+    this.firmaRepo = firmaRepo;
   }
 
   async listarRegistros() {
@@ -111,7 +118,7 @@ export class RegistroVacacionesService {
     return this.registroRepo.obtenerPorId(nuevoId);
   }
 
-  async aprobarPorJefe(id: number, _payload: AprobarSolicitudPayload = {}) {
+  async aprobarPorJefe(id: number, payload: AprobarSolicitudPayload = {}) {
     const registro = await this.obtenerRegistro(id);
 
     // Marcamos como leída la notificación del jefe inmediato
@@ -119,6 +126,28 @@ export class RegistroVacacionesService {
       id,
       "JEFE_INMEDIATO"
     );
+
+    const firmanteRef =
+      payload.aprobado_por?.trim() || String(registro.empleado_id);
+
+    const hashDocumento = generarHashFirma({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "JEFE_INMEDIATO",
+      firmanteReferencia: firmanteRef,
+      fechaHoraIso: new Date().toISOString(),
+      resumenDatos: `empleado=${registro.empleado_id};periodo=${registro.periodo_id};dias=${registro.dias_tomados};obs=${payload.observaciones ?? ""}`,
+    });
+
+    await this.firmaRepo.crear({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "JEFE_INMEDIATO",
+      firmanteReferencia: firmanteRef,
+      firmaTexto: payload.firma_texto ?? null,
+      firmaBase64: payload.firma_base64 ?? null,
+      hashDocumento,
+    });
 
     // 2) Notificación para Gestión Humana tras la aprobación del jefe
     const empleado = await this.empleadoRepo.obtenerPorId(
@@ -141,13 +170,14 @@ export class RegistroVacacionesService {
 
     return {
       aprobado_por: "JEFE_INMEDIATO",
+      hash_documento: hashDocumento,
       registro,
     };
   }
 
   async aprobarPorGestionHumana(
     id: number,
-    _payload: AprobarSolicitudPayload = {}
+    payload: AprobarSolicitudPayload = {}
   ) {
     const registro = await this.obtenerRegistro(id);
 
@@ -156,6 +186,28 @@ export class RegistroVacacionesService {
       id,
       "GESTION_HUMANA"
     );
+
+    const firmanteRef =
+      payload.aprobado_por?.trim() || String(registro.empleado_id);
+
+    const hashDocumento = generarHashFirma({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "GESTION_HUMANA",
+      firmanteReferencia: firmanteRef,
+      fechaHoraIso: new Date().toISOString(),
+      resumenDatos: `empleado=${registro.empleado_id};periodo=${registro.periodo_id};dias=${registro.dias_tomados};obs=${payload.observaciones ?? ""}`,
+    });
+
+    await this.firmaRepo.crear({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "GESTION_HUMANA",
+      firmanteReferencia: firmanteRef,
+      firmaTexto: payload.firma_texto ?? null,
+      firmaBase64: payload.firma_base64 ?? null,
+      hashDocumento,
+    });
 
     // 3) Notificación final al empleado
     await this.notificacionRepo.crear({
@@ -169,6 +221,7 @@ export class RegistroVacacionesService {
 
     return {
       aprobado_por: "GESTION_HUMANA",
+      hash_documento: hashDocumento,
       registro,
     };
   }

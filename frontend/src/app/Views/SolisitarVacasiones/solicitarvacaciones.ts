@@ -58,6 +58,7 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   @ViewChild('firmaCanvas') firmaCanvasRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('firmaJefeCanvas') firmaJefeCanvasRef?: ElementRef<HTMLCanvasElement>;
 
   private readonly apiUrl = 'http://localhost:3000/api';
   readonly usuario = this.authService.usuarioActual;
@@ -109,6 +110,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
   private dibujando = false;
   private ctx: CanvasRenderingContext2D | null = null;
+  private dibujandoJefe = false;
+  private ctxJefe: CanvasRenderingContext2D | null = null;
 
   ngOnInit(): void {
     this.cargarDatosColaborador();
@@ -116,6 +119,7 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     this.inicializarCanvasFirma();
+    this.inicializarCanvasFirmaJefe();
   }
 
   private inicializarCanvasFirma(): void {
@@ -202,6 +206,90 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
     this.firmaColaborador = '';
     this.tieneFirmaDigital = false;
+  }
+
+  private inicializarCanvasFirmaJefe(): void {
+    const canvas = this.firmaJefeCanvasRef?.nativeElement;
+    if (!canvas) return;
+
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : 320;
+    const height = rect.height > 0 ? rect.height : 95;
+
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    context.scale(ratio, ratio);
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.lineWidth = 2;
+    context.strokeStyle = '#0f294a';
+    this.ctxJefe = context;
+  }
+
+  private obtenerCoordenadasJefe(event: MouseEvent | TouchEvent): { x: number; y: number } {
+    const canvas = this.firmaJefeCanvasRef?.nativeElement;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    if (event instanceof TouchEvent) {
+      const touch = event.touches[0] ?? event.changedTouches[0];
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+    }
+
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  iniciarTrazoJefe(event: MouseEvent | TouchEvent): void {
+    if (event instanceof TouchEvent) {
+      event.preventDefault();
+    }
+    if (!this.ctxJefe) {
+      this.inicializarCanvasFirmaJefe();
+    }
+    if (!this.ctxJefe) return;
+
+    const { x, y } = this.obtenerCoordenadasJefe(event);
+    this.dibujandoJefe = true;
+    this.ctxJefe.beginPath();
+    this.ctxJefe.moveTo(x, y);
+  }
+
+  dibujarTrazoJefe(event: MouseEvent | TouchEvent): void {
+    if (!this.dibujandoJefe || !this.ctxJefe) return;
+    if (event instanceof TouchEvent) {
+      event.preventDefault();
+    }
+
+    const { x, y } = this.obtenerCoordenadasJefe(event);
+    this.ctxJefe.lineTo(x, y);
+    this.ctxJefe.stroke();
+  }
+
+  finalizarTrazoJefe(): void {
+    if (!this.dibujandoJefe) return;
+    this.dibujandoJefe = false;
+    const canvas = this.firmaJefeCanvasRef?.nativeElement;
+    if (canvas) {
+      this.firmaJefeInmediato = canvas.toDataURL('image/png');
+    }
+  }
+
+  limpiarFirmaJefe(): void {
+    const canvas = this.firmaJefeCanvasRef?.nativeElement;
+    if (!canvas || !this.ctxJefe) return;
+    this.ctxJefe.clearRect(0, 0, canvas.width, canvas.height);
+    this.firmaJefeInmediato = '';
   }
 
   private primerTexto(...valores: unknown[]): string | undefined {
@@ -340,6 +428,21 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     return `${anio}-${mes}-${dia}`;
   }
 
+  private diasDeAnticipacion(fechaAusenciaISO: string): number {
+    const [anioBase, mesBase, diaBase] = this.fechaActual.split('-').map(Number);
+    const [anioAus, mesAus, diaAus] = fechaAusenciaISO.split('-').map(Number);
+
+    if (!anioBase || !mesBase || !diaBase || !anioAus || !mesAus || !diaAus) {
+      return 0;
+    }
+
+    const utcBase = Date.UTC(anioBase, mesBase - 1, diaBase);
+    const utcAus = Date.UTC(anioAus, mesAus - 1, diaAus);
+    const unDiaMs = 1000 * 60 * 60 * 24;
+
+    return Math.round((utcAus - utcBase) / unDiaMs);
+  }
+
   agregarFila(): void {
     this.filas.push({
       fecha_ausencia: '',
@@ -381,6 +484,22 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
       this.mensajeError =
         'Complete al menos la fecha de ausencia y los días u horas solicitadas en cada fila.';
       return;
+    }
+
+    for (const fila of this.filas) {
+      const anticipacion = this.diasDeAnticipacion(fila.fecha_ausencia);
+
+      if (anticipacion === 0) {
+        this.mensajeError =
+          'No se puede enviar la solicitud porque es del mismo día; tiene que enviarse con 3 días de anticipación antes de faltar.';
+        return;
+      }
+
+      if (anticipacion < 3) {
+        this.mensajeError =
+          'No se puede enviar la solicitud: tiene que enviarse con 3 días de anticipación antes de faltar.';
+        return;
+      }
     }
 
     if (!this.tieneFirmaDigital || !this.firmaColaborador) {
