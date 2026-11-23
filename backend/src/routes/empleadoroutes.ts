@@ -8,6 +8,7 @@ router.get("/", empleadoController.listar);
 router.get("/mi-expediente", empleadoController.miExpediente);
 router.get("/:id", empleadoController.obtenerPorId);
 router.post("/", empleadoController.crear);
+router.post("/:id/finiquito", empleadoController.generarFiniquito);
 router.put("/:id", empleadoController.actualizar);
 router.delete("/:id", empleadoController.eliminar);
 

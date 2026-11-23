@@ -38,6 +38,10 @@ export interface ActualizarEmpleadoInput {
   estado?: string;
 }
 
+export interface ResumenDiasVacaciones extends RowDataPacket {
+  total_dias_disponibles: number;
+}
+
 export class EmpleadoRepository {
   async obtenerTodos(): Promise<Empleado[]> {
     const sql = `
@@ -99,6 +103,16 @@ export class EmpleadoRepository {
     `;
     const [rows] = await pool.query<Empleado[]>(sql, [codigoEmpleado]);
     return rows[0] ?? null;
+  }
+
+  async obtenerDiasVacacionesDisponibles(empleadoId: number): Promise<number> {
+    const sql = `
+      SELECT COALESCE(SUM(dias_disponibles), 0) AS total_dias_disponibles
+      FROM periodos_vacaciones
+      WHERE empleado_id = ?
+    `;
+    const [rows] = await pool.query<ResumenDiasVacaciones[]>(sql, [empleadoId]);
+    return Number(rows[0]?.total_dias_disponibles ?? 0);
   }
 
   async crear(data: CrearEmpleadoInput): Promise<number> {

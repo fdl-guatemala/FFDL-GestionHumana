@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../core/services/auth.services'; // Ajusta la ruta si es distinta
+import { AuthService } from '../../core/services/auth.services';
 
 export interface MovimientoVacacion {
   no: number;
@@ -34,6 +34,23 @@ export interface ExpedienteEmpleado {
   periodos: PeriodoVacacionExpediente[];
 }
 
+export interface FiniquitoGenerado {
+  empleado_id: number;
+  codigo_empleado: string;
+  nombre_completo: string;
+  puesto: string;
+  jefe_inmediato: string;
+  lugar: string;
+  fecha_ingreso: string;
+  fecha_egreso: string | null;
+  estado: string;
+  dias_vacaciones_disponibles: number;
+  dias_vacaciones_requeridos: number;
+  dias_descontados: number;
+  fecha_generacion: string;
+  concepto: string;
+}
+
 @Component({
   selector: 'app-empleados',
   standalone: true,
@@ -46,12 +63,15 @@ export class EmpleadosComponent implements OnInit {
   private readonly authService = inject(AuthService);
 
   private readonly apiUrl = 'http://localhost:3000/api';
+  private readonly diasVacacionesRequeridos = 15;
   readonly usuario = this.authService.usuarioActual;
 
   readonly expediente = signal<ExpedienteEmpleado | null>(null);
   readonly cargando = signal<boolean>(false);
   readonly errorMensaje = signal<string>('');
   readonly periodoActivoIndex = signal<number>(0);
+  readonly generandoFiniquito = signal<boolean>(false);
+  readonly finiquitoGenerado = signal<FiniquitoGenerado | null>(null);
 
   readonly periodoSeleccionado = computed<PeriodoVacacionExpediente | null>(() => {
     const exp = this.expediente();
@@ -82,7 +102,6 @@ export class EmpleadosComponent implements OnInit {
 
     const u = this.usuario();
 
-    // Construimos el expediente inicial con los datos de sesión mientras responde el backend
     const fallbackExpediente: ExpedienteEmpleado = {
       empleado_id: u?.empleado_id,
       codigo_empleado: u?.codigo_empleado,
@@ -99,7 +118,6 @@ export class EmpleadosComponent implements OnInit {
       ? `?empleado_id=${encodeURIComponent(String(u?.empleado_id ?? ''))}&codigo_empleado=${encodeURIComponent(u?.codigo_empleado ?? '')}`
       : '';
 
-    // Ajusta '/empleados/mi-expediente' según tu ruta de backend para consultar el expediente propio
     this.http
       .get<ExpedienteEmpleado | { data?: ExpedienteEmpleado }>(
         `${this.apiUrl}/empleados/mi-expediente${query}`
@@ -131,5 +149,50 @@ export class EmpleadosComponent implements OnInit {
 
   seleccionarPeriodo(index: number): void {
     this.periodoActivoIndex.set(index);
+  }
+
+  generarFiniquito(exp: ExpedienteEmpleado, descontarDias = false): void {
+    const diasAcumulados = this.totalDiasDisponiblesGeneral();
+    const empleadoId = Number(exp.empleado_id ?? this.usuario()?.empleado_id);
+
+    if (diasAcumulados < this.diasVacacionesRequeridos) {
+      this.errorMensaje.set(
+        `Aún no cumples los ${this.diasVacacionesRequeridos} días de vacaciones requeridos (llevas ${diasAcumulados}).`
+      );
+      return;
+    }
+
+    if (!Number.isInteger(empleadoId) || empleadoId <= 0) {
+      this.errorMensaje.set('No se pudo identificar el ID del empleado para generar el finiquito.');
+      return;
+    }
+
+    this.generandoFiniquito.set(true);
+    this.errorMensaje.set('');
+
+    this.http
+      .post<{ message: string; finiquito: FiniquitoGenerado }>(
+        `${this.apiUrl}/empleados/${empleadoId}/finiquito`,
+        { descontar_dias: descontarDias }
+      )
+      .subscribe({
+        next: (res) => {
+          this.generandoFiniquito.set(false);
+          this.finiquitoGenerado.set(res.finiquito);
+          if (descontarDias) {
+            this.cargarMiExpediente();
+          }
+        },
+        error: (err) => {
+          this.generandoFiniquito.set(false);
+          this.errorMensaje.set(
+            err?.error?.message ?? 'No se pudo generar el finiquito.'
+          );
+        }
+      });
+  }
+
+  cerrarFiniquito(): void {
+    this.finiquitoGenerado.set(null);
   }
 }

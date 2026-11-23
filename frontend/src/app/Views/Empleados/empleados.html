@@ -15,6 +15,18 @@
         <a routerLink="/solicitarvacaciones" class="emp-btn-yellow">
           + Solicitar Vacaciones
         </a>
+        <button
+          type="button"
+          class="emp-btn-yellow"
+          *ngIf="expediente() as exp"
+          [disabled]="totalDiasDisponiblesGeneral() < 15 || generandoFiniquito()"
+          (click)="generarFiniquito(exp)"
+          [title]="totalDiasDisponiblesGeneral() >= 15
+            ? 'Generar finiquito (15 días de vacaciones cumplidos)'
+            : 'Requiere cumplir 15 días de vacaciones (' + (totalDiasDisponiblesGeneral() | number:'1.0-2') + '/15)'"
+        >
+          {{ generandoFiniquito() ? 'Generando...' : 'Finiquito' }}
+        </button>
       </div>
     </div>
   </header>
@@ -27,6 +39,55 @@
     <div class="emp-alert emp-alert-warn" *ngIf="!cargando() && errorMensaje()">
       {{ errorMensaje() }}
     </div>
+
+    <!-- Comprobante de Finiquito generado -->
+    <section class="emp-card" *ngIf="finiquitoGenerado() as fin">
+      <div class="emp-card-head">
+        <div>
+          <span class="emp-section-tag">Documento Emitido</span>
+          <h2>Finiquito de Vacaciones</h2>
+        </div>
+        <button
+          type="button"
+          class="emp-btn-outline"
+          (click)="cerrarFiniquito()"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div class="emp-datos-grid">
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Colaborador</span>
+          <strong class="emp-dato-value">{{ fin.nombre_completo }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Código de empleado</span>
+          <strong class="emp-dato-value">{{ fin.codigo_empleado }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Puesto</span>
+          <strong class="emp-dato-value">{{ fin.puesto }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Sucursal / Sede</span>
+          <strong class="emp-dato-value">{{ fin.lugar }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Días de vacaciones cumplidos</span>
+          <strong class="emp-dato-value">{{ fin.dias_vacaciones_disponibles }}</strong>
+        </div>
+
+        <div class="emp-dato-box">
+          <span class="emp-dato-label">Fecha de generación</span>
+          <strong class="emp-dato-value">{{ fin.fecha_generacion }}</strong>
+        </div>
+      </div>
+    </section>
 
     <!-- Datos Generales (precargados desde BD) -->
     <section class="emp-card">
