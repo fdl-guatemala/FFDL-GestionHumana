@@ -104,6 +104,28 @@
                 <option value="Inactivo">Inactivo</option>
               </select>
             </div>
+
+            <div class="ae-field">
+              <label for="password">Contraseña de acceso</label>
+              <input
+                id="password"
+                type="password"
+                [(ngModel)]="empleado.password"
+                name="password"
+                placeholder="Contraseña para iniciar sesión"
+                required
+              />
+            </div>
+
+            <div class="ae-field">
+              <label for="rol_id">Rol del sistema</label>
+              <select id="rol_id" [(ngModel)]="empleado.rol_id" name="rol_id">
+                <option [ngValue]="null">Empleado (por defecto)</option>
+                <option [ngValue]="1">Administrador / Gestión Humana</option>
+                <option [ngValue]="2">Jefe Inmediato</option>
+                <option [ngValue]="3">Empleado</option>
+              </select>
+            </div>
           </div>
         </div>
 

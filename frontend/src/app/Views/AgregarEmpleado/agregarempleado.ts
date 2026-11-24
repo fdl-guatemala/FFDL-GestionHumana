@@ -13,6 +13,8 @@ interface NuevoEmpleadoForm {
   fecha_ingreso: string;
   fecha_ingreso_prueba: string;
   estado: string;
+  password: string;
+  rol_id: number | null;
 }
 
 interface RespuestaEliminarCodigo {
@@ -48,6 +50,8 @@ export class AgregarEmpleadoComponent {
       fecha_ingreso: this.fechaHoy(),
       fecha_ingreso_prueba: '',
       estado: 'Activo',
+      password: '',
+      rol_id: null,
     };
   }
 
@@ -71,10 +75,11 @@ export class AgregarEmpleadoComponent {
       !this.empleado.nombre_completo.trim() ||
       !this.empleado.puesto.trim() ||
       !this.empleado.lugar.trim() ||
-      !this.empleado.fecha_ingreso.trim()
+      !this.empleado.fecha_ingreso.trim() ||
+      !this.empleado.password.trim()
     ) {
       this.mensajeError =
-        'Completa código, nombre completo, puesto, sede/lugar y fecha de ingreso.';
+        'Completa código, nombre completo, puesto, sede/lugar, fecha de ingreso y contraseña.';
       this.cdr.detectChanges();
       return;
     }
@@ -88,6 +93,8 @@ export class AgregarEmpleadoComponent {
       fecha_ingreso: this.empleado.fecha_ingreso,
       fecha_ingreso_prueba: this.empleado.fecha_ingreso_prueba || null,
       estado: this.empleado.estado || 'Activo',
+      password: this.empleado.password,
+      rol_id: this.empleado.rol_id,
     };
 
     this.guardando = true;

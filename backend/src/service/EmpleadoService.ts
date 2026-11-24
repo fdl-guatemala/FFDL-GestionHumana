@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import { pool } from "../config/database.ts";
 import {
   EmpleadoRepository,
   type ActualizarEmpleadoInput,
@@ -6,10 +8,22 @@ import {
 import { PeriodoVacacionesRepository } from "../repositories/PeriodoVacacionesRepository.ts";
 
 const DIAS_VACACIONES_FINIQUITO = 15;
+const ROL_POR_DEFECTO_ID = 3; // Ajusta este ID según tu tabla `roles`
 
 export interface OpcionesFiniquitoInput {
   fechaFiniquito?: string;
   descontarDias?: boolean;
+}
+
+export interface CrearEmpleadoConUsuarioInput extends CrearEmpleadoInput {
+  password?: string;
+  rol_id?: number | null;
+}
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derivedKey}`;
 }
 
 export class EmpleadoService {
@@ -87,27 +101,109 @@ export class EmpleadoService {
     };
   }
 
-  async crearEmpleado(input: CrearEmpleadoInput) {
+  async crearEmpleado(input: CrearEmpleadoConUsuarioInput) {
+    const codigoLimpio = input.codigo_empleado?.trim();
+    const nombreLimpio = input.nombre_completo?.trim();
+    const puestoLimpio = input.puesto?.trim();
+    const lugarLimpio = input.lugar?.trim();
+    const passwordPlano = input.password ?? "";
+
     if (
-      !input.codigo_empleado?.trim() ||
-      !input.nombre_completo?.trim() ||
-      !input.puesto?.trim() ||
-      !input.lugar?.trim() ||
-      !input.fecha_ingreso
+      !codigoLimpio ||
+      !nombreLimpio ||
+      !puestoLimpio ||
+      !lugarLimpio ||
+      !input.fecha_ingreso ||
+      !passwordPlano.trim()
     ) {
       throw new Error(
-        "Faltan campos obligatorios (codigo_empleado, nombre_completo, puesto, lugar, fecha_ingreso)"
+        "Faltan campos obligatorios (codigo_empleado, nombre_completo, puesto, lugar, fecha_ingreso, password)"
       );
     }
 
-    const existente = await this.empleadoRepo.obtenerPorCodigo(
-      input.codigo_empleado.trim()
-    );
+    const existente = await this.empleadoRepo.obtenerPorCodigo(codigoLimpio);
     if (existente) {
       throw new Error("Ya existe un empleado con ese codigo_empleado");
     }
 
-    const nuevoId = await this.empleadoRepo.crear(input);
+    const rolId =
+      typeof input.rol_id === "number" && Number.isInteger(input.rol_id) && input.rol_id > 0
+        ? input.rol_id
+        : ROL_POR_DEFECTO_ID;
+
+    const activo = (input.estado ?? "Activo").toLowerCase() === "inactivo" ? 0 : 1;
+    const passwordHash = hashPassword(passwordPlano);
+
+    const connection = await pool.getConnection();
+    let nuevoId = 0;
+
+    try {
+      await connection.beginTransaction();
+
+      const [empResult] = await connection.query<any>(
+        `
+          INSERT INTO empleados (
+            codigo_empleado,
+            nombre_completo,
+            puesto,
+            jefe_inmediato,
+            lugar,
+            fecha_ingreso,
+            fecha_ingreso_prueba,
+            fecha_egreso,
+            estado
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          codigoLimpio,
+          nombreLimpio,
+          puestoLimpio,
+          input.jefe_inmediato ?? null,
+          lugarLimpio,
+          input.fecha_ingreso,
+          input.fecha_ingreso_prueba ?? null,
+          input.fecha_egreso ?? null,
+          input.estado ?? "Activo",
+        ]
+      );
+
+      nuevoId = Number(empResult.insertId);
+
+      const [usrResult] = await connection.query<any>(
+        `
+          INSERT INTO usuarios (
+            empleado_id,
+            codigo_empleado,
+            nombre_empleados,
+            password_hash,
+            rol_id,
+            activo
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [nuevoId, codigoLimpio, nombreLimpio, passwordHash, rolId, activo]
+      );
+
+      const usuarioId = Number(usrResult.insertId);
+      if (usuarioId > 0) {
+        await connection.query(
+          `
+            INSERT IGNORE INTO usuario_roles (usuario_id, rol_id)
+            VALUES (?, ?)
+          `,
+          [usuarioId, rolId]
+        );
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
     return this.empleadoRepo.obtenerPorId(nuevoId);
   }
 
@@ -155,7 +251,7 @@ export class EmpleadoService {
       nombre_completo: empleado.nombre_completo,
     };
   }
-  
+
   async generarFiniquito(id: number, options?: OpcionesFiniquitoInput) {
     const empleado = await this.empleadoRepo.obtenerPorId(id);
     if (!empleado) {

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { UsuarioRepository } from "../repositories/UsuarioRepository.ts";
 
 interface RegistroUsuario {
@@ -44,6 +45,17 @@ export class UsuarioService {
         }
       } catch {
         // Continúa si no está bcrypt
+      }
+    }
+
+    // Verifica formato `${salt}:${derivedKeyHex}` generado con scryptSync
+    const partes = claveGuardada.split(":");
+    if (partes.length === 2 && partes[0] && partes[1] && /^[0-9a-fA-F]+$/.test(partes[1])) {
+      const [salt, keyHex] = partes;
+      const keyBuffer = Buffer.from(keyHex, "hex");
+      const derivedBuffer = crypto.scryptSync(claveIngresada, salt, keyBuffer.length);
+      if (keyBuffer.length === derivedBuffer.length) {
+        return crypto.timingSafeEqual(keyBuffer, derivedBuffer);
       }
     }
 
