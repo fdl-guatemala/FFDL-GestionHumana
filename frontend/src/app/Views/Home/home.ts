@@ -176,12 +176,32 @@ export class HomeComponent implements OnInit {
       ) {
         return true;
       }
+
+      const nombreNorm = this.normalizarTexto(
+        u["nombre_completo"] ??
+          u["nombreCompleto"] ??
+          u["nombre"] ??
+          u["nombre_empleados"] ??
+          ""
+      );
+      const codigoStr = String(
+        u["codigo_empleado"] ?? u["codigoEmpleado"] ?? u["codigo"] ?? ""
+      ).trim();
+
+      if (
+        codigoStr === "406" ||
+        codigoStr === "404" ||
+        nombreNorm.includes("claudia marivel boror") ||
+        nombreNorm.includes("iliana siomara salazar")
+      ) {
+        return true;
+      }
     }
 
     return false;
   });
 
-  // Solo jefes inmediatos ven "Aprobar Solicitudes"
+  // Jefes inmediatos ven "Aprobar Solicitudes"
   readonly esJefeInmediato = computed(() => {
     const candidatos = this.extraerCandidatosUsuario();
 
@@ -216,8 +236,9 @@ export class HomeComponent implements OnInit {
     return false;
   });
 
+  // Jefes inmediatos y Gestión Humana (incluyendo a Claudia) ven "Aprobar Solicitudes"
   readonly puedeAprobarSolicitudes = computed(() => {
-    return this.esJefeInmediato();
+    return this.esRrhh() || this.esJefeInmediato();
   });
 
   readonly codigoUsuario = computed(() => {

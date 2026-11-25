@@ -21,6 +21,14 @@ interface DetalleAusenciaFila {
   motivo: string;
 }
 
+interface EvidenciaAdjunta {
+  nombre: string;
+  tipo: string;
+  tamanoKb: number;
+  dataUrl: string;
+  esImagen: boolean;
+}
+
 interface EmpleadoApiItem {
   empleado_id?: number;
   id?: number;
@@ -99,6 +107,10 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   diasDisponiblesVacaciones: number | null = null;
   observaciones = '';
 
+  // Evidencia del porqué faltaron o van a faltar
+  evidenciaDescripcion = '';
+  evidencias: EvidenciaAdjunta[] = [];
+
   firmaColaborador = '';
   tieneFirmaDigital = false;
   nombreJefeInmediato = '';
@@ -120,6 +132,55 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   ngAfterViewInit(): void {
     this.inicializarCanvasFirma();
     this.inicializarCanvasFirmaJefe();
+  }
+
+  onSeleccionarEvidencias(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const archivos = input?.files;
+    if (!archivos || archivos.length === 0) return;
+
+    this.mensajeError = '';
+    const maxBytes = 5 * 1024 * 1024; // 5 MB por archivo
+
+    Array.from(archivos).forEach((archivo) => {
+      if (archivo.size > maxBytes) {
+        this.mensajeError = `El archivo "${archivo.name}" supera el límite de 5 MB.`;
+        return;
+      }
+
+      const lector = new FileReader();
+      lector.onload = () => {
+        const resultado = typeof lector.result === 'string' ? lector.result : '';
+        if (!resultado) return;
+
+        const esImagen =
+          archivo.type.startsWith('image/') ||
+          /\.(png|jpe?g|gif|webp)$/i.test(archivo.name);
+
+        const existe = this.evidencias.some(
+          (item) => item.nombre === archivo.name && item.tamanoKb === Math.round(archivo.size / 1024)
+        );
+        if (existe) return;
+
+        this.evidencias.push({
+          nombre: archivo.name,
+          tipo: archivo.type || 'archivo',
+          tamanoKb: Math.max(1, Math.round(archivo.size / 1024)),
+          dataUrl: resultado,
+          esImagen,
+        });
+        this.cdr.detectChanges();
+      };
+      lector.readAsDataURL(archivo);
+    });
+
+    if (input) {
+      input.value = '';
+    }
+  }
+
+  eliminarEvidencia(index: number): void {
+    this.evidencias.splice(index, 1);
   }
 
   private inicializarCanvasFirma(): void {
@@ -542,6 +603,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
       },
       dias_disponibles_vacaciones: this.diasDisponiblesVacaciones,
       observaciones: this.observaciones.trim(),
+      evidencia_descripcion: this.evidenciaDescripcion.trim(),
+      evidencias: this.evidencias,
       firma_colaborador: this.firmaColaborador,
       nombre_jefe_inmediato: this.nombreJefeInmediato.trim(),
       firma_jefe_inmediato: this.firmaJefeInmediato.trim(),

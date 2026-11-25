@@ -10,8 +10,8 @@
       </div>
 
       <div class="sv-topbar-actions">
-  <a routerLink="/home" class="sv-back-link">← Volver al Home</a>
-</div>
+        <a routerLink="/home" class="sv-back-link">← Volver al Home</a>
+      </div>
     </div>
   </header>
 
@@ -220,6 +220,77 @@
               (click)="seleccionarMotivoEspecial('vacaciones')"
             >
               {{ tipoMotivoEspecial === 'vacaciones' ? 'X' : '' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Espacio para agregar evidencia del motivo de ausencia -->
+      <div class="sv-important-box" style="margin-bottom: 18px;">
+        <div class="sv-important-title">Evidencia de ausencia (respaldo del motivo):</div>
+        <p style="margin: 4px 0 10px; font-size: 13px; color: #475569;">
+          Adjunta constancias médicas, boletas del IGSS, capturas o documentos que respalden por qué faltaste o vas a faltar (máx. 5 MB por archivo).
+        </p>
+
+        <div style="margin-bottom: 10px;">
+          <label for="evidenciaDescripcion" style="display: block; font-weight: 600; margin-bottom: 4px;">
+            Detalle de la evidencia adjunta:
+          </label>
+          <input
+            id="evidenciaDescripcion"
+            type="text"
+            placeholder="Ej. Constancia de cita médica del IGSS o comprobante de trámite"
+            [(ngModel)]="evidenciaDescripcion"
+            name="evidenciaDescripcion"
+            style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;"
+          />
+        </div>
+
+        <div>
+          <label
+            for="inputEvidencias"
+            style="display: inline-block; padding: 8px 14px; border: 1.5px dashed #0f294a; border-radius: 8px; background: #fff; color: #0f294a; font-weight: 600; font-size: 13px; cursor: pointer;"
+          >
+            + Adjuntar evidencia (imagen o PDF)
+          </label>
+          <input
+            id="inputEvidencias"
+            type="file"
+            accept="image/*,.pdf,.doc,.docx"
+            multiple
+            (change)="onSeleccionarEvidencias($event)"
+            style="display: none;"
+          />
+        </div>
+
+        <div *ngIf="evidencias.length > 0" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div
+            *ngFor="let ev of evidencias; let idx = index"
+            style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff;"
+          >
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <img
+                *ngIf="ev.esImagen"
+                [src]="ev.dataUrl"
+                [alt]="ev.nombre"
+                style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; flex-shrink: 0;"
+              />
+              <div style="min-width: 0;">
+                <div style="font-size: 13px; font-weight: 600; color: #0f294a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  {{ ev.nombre }}
+                </div>
+                <div style="font-size: 12px; color: #64748b;">
+                  {{ ev.tamanoKb }} KB
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              (click)="eliminarEvidencia(idx)"
+              style="padding: 4px 10px; border: 1px solid #fca5a5; border-radius: 6px; background: #fef2f2; color: #b91c1c; font-size: 12px; cursor: pointer; flex-shrink: 0;"
+            >
+              Quitar
             </button>
           </div>
         </div>
