@@ -1,0 +1,201 @@
+<div class="as-page">
+  <header class="as-topbar">
+    <div class="as-topbar-inner">
+      <div class="as-brand">
+        <img src="/logoblanco.png" alt="Logo FFDL" class="as-logo" />
+        <div>
+          <span class="as-org">FFDL de Guatemala · Equipo a cargo · Aprobación</span>
+          <h1 class="as-doc-title">Solicitudes enviadas por tu personal</h1>
+        </div>
+      </div>
+
+      <div class="as-topbar-actions">
+        <a routerLink="/home" class="as-back-link">← Volver al Home</a>
+        <button type="button" class="as-btn-yellow" (click)="cargarSolicitudes()">
+          Actualizar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="as-main">
+    <section class="as-sheet">
+      <div class="as-section-head">
+        <div>
+          <span class="as-badge">05 · Aprobaciones</span>
+          <h2 class="as-subtitle">Aprobar Solicitudes</h2>
+          <p class="as-intro">
+            Haz clic en una solicitud para abrir la ficha, revisar la ausencia, aprobar o rechazar con motivo.
+          </p>
+        </div>
+      </div>
+
+      <div class="as-msg as-success" *ngIf="mensajeExito()">
+        {{ mensajeExito() }}
+      </div>
+
+      <div class="as-msg as-error" *ngIf="mensajeError()">
+        {{ mensajeError() }}
+      </div>
+
+      <div *ngIf="cargando()" class="as-empty">
+        Cargando solicitudes...
+      </div>
+
+      <div *ngIf="!cargando() && solicitudes().length === 0" class="as-empty">
+        No hay solicitudes pendientes ni registradas para tu equipo en este momento.
+      </div>
+
+      <div class="as-table-wrap" *ngIf="!cargando() && solicitudes().length > 0">
+        <table class="as-table">
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Fecha(s)</th>
+              <th>Días / Horas</th>
+              <th>Motivo</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let sol of solicitudes()" (click)="abrirFicha(sol)">
+              <td><strong>{{ sol.nombre_colaborador }}</strong></td>
+              <td>{{ sol.rango_o_fechas }}</td>
+              <td>{{ sol.dias_horas }}</td>
+              <td>{{ sol.motivo }}</td>
+              <td>
+                <span
+                  class="as-status-pill"
+                  [class.is-review]="sol.estado === 'En revisión'"
+                >
+                  {{ sol.estado }}
+                </span>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="as-btn-yellow"
+                  (click)="$event.stopPropagation(); abrirFicha(sol)"
+                >
+                  Abrir ficha
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Ficha de solicitud / permiso al hacer clic -->
+      <div class="as-ficha-box" *ngIf="solicitudEnFicha() as ficha">
+        <div class="as-ficha-top">
+          <div>
+            <span class="as-badge">Ficha de Solicitud #{{ ficha.id }}</span>
+            <h3 class="as-ficha-title">{{ ficha.nombre_colaborador }}</h3>
+          </div>
+          <button type="button" class="as-btn-secondary" (click)="cerrarFicha()">
+            Cerrar ficha
+          </button>
+        </div>
+
+        <div class="as-meta-grid">
+          <div class="as-meta-item">
+            <label>Fecha solicitud</label>
+            <span>{{ ficha.fecha_solicitud || '-' }}</span>
+          </div>
+          <div class="as-meta-item">
+            <label>Fecha(s) permiso</label>
+            <span>{{ ficha.rango_o_fechas || '-' }}</span>
+          </div>
+          <div class="as-meta-item">
+            <label>Días / Horas</label>
+            <span>{{ ficha.dias_horas || '-' }}</span>
+          </div>
+          <div class="as-meta-item">
+            <label>Jefe inmediato</label>
+            <span>{{ ficha.jefe_inmediato || 'Pasa directo a Gestión Humana' }}</span>
+          </div>
+        </div>
+
+        <div class="as-motivo-box">
+          <strong>Motivo:</strong> {{ ficha.motivo }}
+        </div>
+
+        <div class="as-form-grid">
+          <div class="as-field">
+            <label>Firma / Nombre de quien aprueba o rechaza</label>
+            <input
+              type="text"
+              [(ngModel)]="firmaTexto"
+              placeholder="Escribe tu firma o nombre"
+            />
+          </div>
+
+          <div class="as-field">
+            <label>Observaciones (opcional)</label>
+            <input
+              type="text"
+              [(ngModel)]="observacionesTexto"
+              placeholder="Observaciones"
+            />
+          </div>
+        </div>
+
+        <!-- Cuadro para escribir por qué fue rechazada -->
+        <div class="as-rechazo-box" *ngIf="mostrarCuadroRechazo()">
+          <label for="motivoRechazoInput">
+            <strong>Motivo del rechazo *</strong>
+          </label>
+          <textarea
+            id="motivoRechazoInput"
+            rows="3"
+            [(ngModel)]="motivoRechazoTexto"
+            placeholder="Escribe aquí por qué se rechaza esta solicitud..."
+          ></textarea>
+          <div class="as-rechazo-actions">
+            <button
+              type="button"
+              class="as-btn-danger"
+              [disabled]="procesando()"
+              (click)="confirmarRechazo()"
+            >
+              Confirmar rechazo
+            </button>
+            <button
+              type="button"
+              class="as-btn-secondary"
+              [disabled]="procesando()"
+              (click)="alternarCuadroRechazo()"
+            >
+              Cancelar rechazo
+            </button>
+          </div>
+        </div>
+
+        <div class="as-footer-actions">
+          <button
+            type="button"
+            class="as-btn-yellow"
+            [disabled]="procesando()"
+            (click)="aprobarYEnviarAGestionHumana()"
+          >
+            {{
+              esEtapaGestionHumana(ficha)
+                ? 'Aprobar y finalizar en Gestión Humana'
+                : 'Firmar, aprobar y enviar a Gestión Humana'
+            }}
+          </button>
+
+          <button
+            type="button"
+            class="as-btn-danger"
+            [disabled]="procesando()"
+            (click)="alternarCuadroRechazo()"
+          >
+            Rechazar
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

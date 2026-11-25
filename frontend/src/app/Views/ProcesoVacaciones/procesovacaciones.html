@@ -66,6 +66,70 @@
       <div class="pv-timeline-obs" *ngIf="solicitudSeleccionada()?.observaciones as obs">
         <strong>Observaciones registradas:</strong> {{ obs }}
       </div>
+
+      <!-- Panel de aprobación en dos pasos: Jefe Inmediato -> Gestión Humana -->
+      <div
+        class="pv-approval-box"
+        *ngIf="solicitudSeleccionada() as det"
+        style="margin-top: 16px;"
+      >
+        <ng-container
+          *ngIf="puedeAprobarJefe() || puedeAprobarGestionHumana(); else soloConsultaEmpleado"
+        >
+          <h3>Aprobación de solicitud #{{ det.id }}</h3>
+          <p *ngIf="det.nombre_colaborador">
+            <strong>Colaborador:</strong> {{ det.nombre_colaborador }}
+            <span *ngIf="det.jefe_inmediato">
+              · <strong>Jefe inmediato:</strong> {{ det.jefe_inmediato }}
+            </span>
+          </p>
+
+          <div class="pv-search-wrap" style="margin: 10px 0; gap: 8px; flex-wrap: wrap;">
+            <input
+              type="text"
+              [(ngModel)]="firmaTextoAprobacion"
+              placeholder="Firma o nombre de quien aprueba (opcional)"
+            />
+            <input
+              type="text"
+              [(ngModel)]="observacionesAprobacion"
+              placeholder="Observaciones (opcional)"
+            />
+          </div>
+
+          <div class="pv-actions" style="gap: 10px; flex-wrap: wrap;">
+            <button
+              *ngIf="puedeAprobarJefe()"
+              type="button"
+              class="pv-btn-yellow"
+              [disabled]="procesandoAprobacion()"
+              (click)="aprobarComoJefeInmediato()"
+            >
+              Aprobar Jefe Inmediato
+            </button>
+
+            <button
+              *ngIf="puedeAprobarGestionHumana()"
+              type="button"
+              class="pv-btn-outline"
+              [disabled]="procesandoAprobacion()"
+              (click)="aprobarComoGestionHumana()"
+            >
+              Aprobar Gestión Humana
+            </button>
+          </div>
+        </ng-container>
+
+        <ng-template #soloConsultaEmpleado>
+          <p class="pv-step-msg">
+            Solo puedes consultar el avance de esta solicitud en la línea de tiempo. La aprobación corresponde a tu jefe inmediato y luego a Gestión Humana.
+          </p>
+        </ng-template>
+
+        <div class="pv-alert pv-alert-info" *ngIf="estadoFeedback()" style="margin-top: 10px;">
+          {{ estadoFeedback() }}
+        </div>
+      </div>
     </section>
 
     <!-- Resumen rápido -->

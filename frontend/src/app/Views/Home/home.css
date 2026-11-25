@@ -64,21 +64,31 @@
 }
 
 .gh-nav-item {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 11px 14px;
   border-radius: 10px;
-  color: #e2e8f0;
+  color: #ffffff;
   text-decoration: none;
+  font-family: inherit;
   font-size: 0.92rem;
   font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  opacity: 1;
+  box-sizing: border-box;
   transition: background-color 0.2s, color 0.2s;
 }
 
 .gh-nav-item:hover,
 .gh-nav-item.is-active {
-  background-color: rgba(212, 155, 39, 0.18);
+  background-color: rgba(212, 155, 39, 0.22);
   color: #ffffff;
 }
 
@@ -123,6 +133,7 @@
   border: 1px solid rgba(255, 255, 255, 0.28);
   background-color: transparent;
   color: #ffffff;
+  font-family: inherit;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -138,6 +149,7 @@
 .gh-content-wrap {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .gh-topbar {
@@ -149,6 +161,12 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.gh-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .gh-kicker {
@@ -263,12 +281,15 @@
   justify-content: center;
   gap: 8px;
   padding: 12px 18px;
+  border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, #e2ab32 0%, #d49b27 100%);
   color: #0f294a;
+  font-family: inherit;
   font-weight: 700;
   font-size: 0.94rem;
   text-decoration: none;
+  cursor: pointer;
   box-shadow: 0 6px 16px rgba(212, 155, 39, 0.32);
   transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
@@ -290,6 +311,146 @@
 
 .gh-btn-yellow:hover .gh-btn-arrow {
   transform: translateX(3px);
+}
+
+/* Bandeja de notificaciones */
+.gh-notif-panel {
+  margin-top: 28px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-top: 4px solid #d49b27;
+  border-radius: 16px;
+  padding: 24px 26px;
+  box-shadow: 0 10px 26px rgba(15, 41, 74, 0.06);
+}
+
+.gh-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.gh-notif-title {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0f294a;
+}
+
+.gh-notif-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.gh-notif-refresh {
+  padding: 9px 14px;
+  border-radius: 9px;
+  border: 1px solid #0f294a;
+  background-color: #ffffff;
+  color: #0f294a;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.gh-notif-refresh:hover {
+  background-color: #0f294a;
+  color: #ffffff;
+}
+
+.gh-notif-empty {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #64748b;
+}
+
+.gh-notif-error {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.gh-notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gh-notif-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #0f294a;
+  background-color: #f8fafc;
+}
+
+.gh-notif-card-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f294a;
+  margin-right: 8px;
+}
+
+.gh-notif-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.gh-notif-msg {
+  margin: 5px 0 0;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.gh-notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-notif-btn-ok,
+.gh-notif-btn-no,
+.gh-notif-btn-read {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: none;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gh-notif-btn-ok {
+  background-color: #15803d;
+  color: #ffffff;
+}
+
+.gh-notif-btn-no {
+  background-color: #b91c1c;
+  color: #ffffff;
+}
+
+.gh-notif-btn-read {
+  background-color: #e2e8f0;
+  color: #0f294a;
 }
 
 @media (max-width: 860px) {

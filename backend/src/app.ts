@@ -1,5 +1,5 @@
 ﻿import path from 'path';
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import empleadoRoutes from './routes/empleadoroutes.ts';
 import usuarioRoutes from './routes/UsuarioRoutes.ts';
@@ -12,6 +12,10 @@ import notificacionesAusenciasRouter from './routes/notificacionesAusenciasroute
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const vacacionesRouter = Router();
+vacacionesRouter.use('/solicitudes', registroVacacionesRoutes);
+vacacionesRouter.use('/', registroVacacionesRoutes);
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'public/uploads')));
@@ -20,8 +24,12 @@ app.use('/api/empleados', empleadoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/periodos-vacaciones', periodoVacacionesRoutes);
 app.use('/api/registro-vacaciones', registroVacacionesRoutes);
+app.use('/api/vacaciones', vacacionesRouter);
+app.use('/solicitudes', registroVacacionesRoutes);
+app.use('/api/solicitudes', registroVacacionesRoutes);
 app.use('/api/home', homeRoutes);
-app.use("/api/notificaciones-ausencias", notificacionesAusenciasRouter)
+app.use('/api/notificaciones', notificacionesAusenciasRouter);
+app.use('/api/notificaciones-ausencias', notificacionesAusenciasRouter);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({ mensaje: 'API Gestión Humana funcionando' });

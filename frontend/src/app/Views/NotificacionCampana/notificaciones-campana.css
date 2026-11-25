@@ -1,0 +1,114 @@
+.campana-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.campana-btn {
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.campana-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+.campana-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  color: #0f294a;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(15, 41, 74, 0.2);
+  z-index: 1000;
+}
+
+.campana-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.88rem;
+}
+
+.campana-vacio {
+  padding: 20px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.campana-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.campana-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.campana-item:hover {
+  background-color: #f8fafc;
+}
+
+.campana-item.no-leida {
+  background-color: #fefce8;
+}
+
+.campana-item-titulo {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.campana-item-texto {
+  font-size: 0.84rem;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.campana-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.campana-estado.aprobado {
+  color: #166534;
+  font-weight: 700;
+}
+
+.campana-estado.rechazado {
+  color: #991b1b;
+  font-weight: 700;
+}

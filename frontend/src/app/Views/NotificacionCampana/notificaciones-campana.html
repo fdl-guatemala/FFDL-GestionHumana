@@ -1,0 +1,51 @@
+<div class="campana-wrapper">
+  <button
+    type="button"
+    class="campana-btn"
+    (click)="alternarPanel()"
+    aria-label="Notificaciones"
+  >
+    <span class="campana-icono">🔔</span>
+    <span class="campana-badge" *ngIf="noLeidasCount > 0">
+      {{ noLeidasCount > 99 ? '99+' : noLeidasCount }}
+    </span>
+  </button>
+
+  <div class="campana-panel" *ngIf="abierta">
+    <div class="campana-header">
+      <strong>Notificaciones</strong>
+      <span>{{ noLeidasCount }} sin leer</span>
+    </div>
+
+    <div class="campana-vacio" *ngIf="notificaciones.length === 0">
+      No tienes notificaciones por el momento.
+    </div>
+
+    <ul class="campana-lista" *ngIf="notificaciones.length > 0">
+      <li
+        *ngFor="let n of notificaciones"
+        class="campana-item"
+        [class.no-leida]="!n.leida || n.leida === 0"
+        (click)="alHacerClicNotificacion(n, $event)"
+        style="cursor: pointer;"
+      >
+        <div class="campana-item-titulo">{{ n.titulo }}</div>
+        <div class="campana-item-texto">{{ n.mensaje }}</div>
+        <div class="campana-item-meta" *ngIf="n.nombre_solicitante || n.estado_aprobacion">
+          <span *ngIf="n.nombre_solicitante">
+            {{ n.nombre_solicitante }}
+            <ng-container *ngIf="n.codigo_solicitante">({{ n.codigo_solicitante }})</ng-container>
+          </span>
+          <span
+            *ngIf="n.estado_aprobacion"
+            class="campana-estado"
+            [class.aprobado]="n.estado_aprobacion === 'aprobado'"
+            [class.rechazado]="n.estado_aprobacion === 'rechazado'"
+          >
+            {{ n.estado_aprobacion }}
+          </span>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

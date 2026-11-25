@@ -43,9 +43,18 @@
         <h2 class="gh-heading">Bienvenido a Gestión Humana</h2>
       </div>
 
-      <div class="gh-status-pill" *ngIf="usuario() as u">
-        <span class="gh-status-dot" [class.is-inactive]="!u.activo"></span>
-        <span>{{ u.activo ? 'Cuenta activa' : 'Pendiente de validación' }}</span>
+      <div class="gh-topbar-right">
+        <app-notificaciones-campana
+          [rolTipo]="rolTipo()"
+          [codigoUsuario]="codigoUsuario()"
+          [nombreUsuario]="nombreUsuario()"
+          [empleadoId]="empleadoIdUsuario()"
+        ></app-notificaciones-campana>
+
+        <div class="gh-status-pill" *ngIf="usuario() as u">
+          <span class="gh-status-dot" [class.is-inactive]="!u.activo"></span>
+          <span>{{ u.activo ? 'Cuenta activa' : 'Pendiente de validación' }}</span>
+        </div>
       </div>
     </header>
 

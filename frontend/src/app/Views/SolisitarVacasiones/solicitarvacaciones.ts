@@ -443,6 +443,15 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     return Math.round((utcAus - utcBase) / unDiaMs);
   }
 
+  private calcularTotalDiasSolicitados(): number {
+    return this.filas.reduce((acc, fila) => {
+      const texto = String(fila.dias_horas_solicitadas ?? '').trim().replace(',', '.');
+      const match = texto.match(/(\d+(?:\.\d+)?)/);
+      const num = match ? Number(match[1]) : 0;
+      return acc + (Number.isFinite(num) && num > 0 ? num : 1);
+    }, 0);
+  }
+
   agregarFila(): void {
     this.filas.push({
       fecha_ausencia: '',
@@ -475,7 +484,7 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     this.mensajeError = '';
     this.mensajeExito = '';
 
-    const u = this.usuario();
+    const u = this.usuario() as (UsuarioSesion & EmpleadoApiItem) | null;
     const filaInvalida = this.filas.some(
       (f) => !f.fecha_ausencia || !f.dias_horas_solicitadas.trim()
     );
@@ -510,11 +519,18 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
     this.cargando = true;
 
+    const primeraFecha = this.filas[0]?.fecha_ausencia ?? this.fechaActual;
+    const totalDias = this.calcularTotalDiasSolicitados();
+    const empleadoIdResuelto = u?.empleado_id ?? u?.id ?? null;
+
     const payload = {
-      empleado_id: u?.empleado_id ?? null,
+      empleado_id: empleadoIdResuelto,
       codigo_empleado: u?.codigo_empleado ?? '',
       nombre_colaborador: this.nombreColaborador,
       fecha_solicitud: this.fechaActual,
+      fecha_disfrute: primeraFecha,
+      dias_tomados: totalDias,
+      motivo: this.filas[0]?.motivo || 'Vacaciones',
       sucursal: this.sucursalSignal(),
       cargo: this.cargoSignal(),
       detalle_ausencias: this.filas,
@@ -531,12 +547,19 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
       firma_jefe_inmediato: this.firmaJefeInmediato.trim(),
     };
 
-    this.http.post(`${this.apiUrl}/vacaciones/solicitudes`, payload).subscribe({
-      next: () => {
+    this.http.post<any>(`${this.apiUrl}/vacaciones/solicitudes`, payload).subscribe({
+      next: (res) => {
         this.cargando = false;
         this.mensajeExito = 'Solicitud de ausencia enviada correctamente.';
+        const idCreado = res?.id ?? res?.data?.id ?? res?.registro?.id;
         setTimeout(() => {
-          this.router.navigate(['/proceso-vacaciones']);
+          if (idCreado) {
+            this.router.navigate(['/procesovacaciones'], {
+              queryParams: { solicitudId: idCreado },
+            });
+          } else {
+            this.router.navigate(['/procesovacaciones']);
+          }
         }, 1500);
       },
       error: (err) => {
