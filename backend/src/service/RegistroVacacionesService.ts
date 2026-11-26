@@ -22,12 +22,28 @@ export interface AprobarSolicitudPayload {
   rechazado_por?: string;
 }
 
+export interface EvidenciaSolicitudPayload {
+  evidencia_url?: string | null;
+  evidencia_nombre?: string | null;
+  evidencia_base64?: string | null;
+  observaciones?: string | null;
+  sin_evidencia?: boolean;
+  enviado_por?: string;
+}
+
 export interface PasoLineaProceso {
   paso: number;
   clave: string;
   titulo: string;
   estado: "COMPLETADO" | "EN_PROCESO" | "PENDIENTE" | "RECHAZADO";
 }
+
+export type EtapaFlujoVacaciones =
+  | "PENDIENTE_JEFE"
+  | "PENDIENTE_EVIDENCIA"
+  | "PENDIENTE_GH"
+  | "APROBADA"
+  | "RECHAZADA";
 
 export class RegistroVacacionesService {
   private readonly registroRepo: RegistroVacacionesRepository;
@@ -192,8 +208,12 @@ export class RegistroVacacionesService {
     const directo = this.extraerEnteroPositivo(
       raw.empleado_id ?? raw.empleadoId ?? 0
     );
+
     if (directo > 0) {
-      return directo;
+      const empPorId = await this.empleadoRepo.obtenerPorId(directo);
+      if (empPorId && Number(empPorId.id) > 0) {
+        return Number(empPorId.id);
+      }
     }
 
     const codigo = String(
@@ -255,6 +275,10 @@ export class RegistroVacacionesService {
       return existente;
     }
 
+    if (!Number.isInteger(empleadoId) || empleadoId <= 0) {
+      return undefined;
+    }
+
     const empleado = await this.empleadoRepo.obtenerPorId(empleadoId);
     if (!empleado) {
       return undefined;
@@ -266,14 +290,21 @@ export class RegistroVacacionesService {
 
     const anio = Number(baseFecha.slice(0, 4)) || new Date().getFullYear();
 
-    const nuevoPeriodoId = await this.periodoRepo.crear({
+    const creado = await this.periodoRepo.crear({
       empleado_id: empleadoId,
       fecha_inicio_periodo: `${anio}-01-01`,
       fecha_fin_periodo: `${anio}-12-31`,
       dias_disponibles: 15,
     });
 
-    return nuevoPeriodoId > 0 ? nuevoPeriodoId : undefined;
+    const nuevoPeriodoId =
+      typeof creado === "number"
+        ? creado
+        : Number((creado as any)?.id ?? (creado as any)?.insertId ?? 0);
+
+    return Number.isInteger(nuevoPeriodoId) && nuevoPeriodoId > 0
+      ? nuevoPeriodoId
+      : undefined;
   }
 
   private resolverNombreEmpleado(
@@ -324,10 +355,8 @@ export class RegistroVacacionesService {
     return esMismaPersona ? null : candidato;
   }
 
-  private construirLineaProceso(
-    etapaActual: "PENDIENTE_JEFE" | "PENDIENTE_GH" | "APROBADA" | "RECHAZADA"
-  ): {
-    etapa_actual: string;
+  private construirLineaProceso(etapaActual: EtapaFlujoVacaciones): {
+    etapa_actual: EtapaFlujoVacaciones;
     estado_visible_colaborador: string;
     pasos: PasoLineaProceso[];
   } {
@@ -338,8 +367,8 @@ export class RegistroVacacionesService {
         pasos: [
           { paso: 1, clave: "ENVIADA", titulo: "Solicitud enviada", estado: "COMPLETADO" },
           { paso: 2, clave: "JEFE_INMEDIATO", titulo: "Vo. Bo. Jefe Inmediato", estado: "RECHAZADO" },
-          { paso: 3, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "PENDIENTE" },
-          { paso: 4, clave: "APROBADA", titulo: "Solicitud aprobada", estado: "PENDIENTE" },
+          { paso: 3, clave: "EVIDENCIA_COLABORADOR", titulo: "Evidencia del colaborador", estado: "PENDIENTE" },
+          { paso: 4, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "PENDIENTE" },
         ],
       };
     }
@@ -351,8 +380,8 @@ export class RegistroVacacionesService {
         pasos: [
           { paso: 1, clave: "ENVIADA", titulo: "Solicitud enviada", estado: "COMPLETADO" },
           { paso: 2, clave: "JEFE_INMEDIATO", titulo: "Vo. Bo. Jefe Inmediato", estado: "COMPLETADO" },
-          { paso: 3, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "COMPLETADO" },
-          { paso: 4, clave: "APROBADA", titulo: "Solicitud aprobada", estado: "COMPLETADO" },
+          { paso: 3, clave: "EVIDENCIA_COLABORADOR", titulo: "Evidencia del colaborador", estado: "COMPLETADO" },
+          { paso: 4, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "COMPLETADO" },
         ],
       };
     }
@@ -364,8 +393,21 @@ export class RegistroVacacionesService {
         pasos: [
           { paso: 1, clave: "ENVIADA", titulo: "Solicitud enviada", estado: "COMPLETADO" },
           { paso: 2, clave: "JEFE_INMEDIATO", titulo: "Vo. Bo. Jefe Inmediato", estado: "COMPLETADO" },
-          { paso: 3, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "EN_PROCESO" },
-          { paso: 4, clave: "APROBADA", titulo: "Solicitud aprobada", estado: "PENDIENTE" },
+          { paso: 3, clave: "EVIDENCIA_COLABORADOR", titulo: "Evidencia del colaborador", estado: "COMPLETADO" },
+          { paso: 4, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "EN_PROCESO" },
+        ],
+      };
+    }
+
+    if (etapaActual === "PENDIENTE_EVIDENCIA") {
+      return {
+        etapa_actual: "PENDIENTE_EVIDENCIA",
+        estado_visible_colaborador: "En proceso · Pendiente de evidencia del colaborador",
+        pasos: [
+          { paso: 1, clave: "ENVIADA", titulo: "Solicitud enviada", estado: "COMPLETADO" },
+          { paso: 2, clave: "JEFE_INMEDIATO", titulo: "Vo. Bo. Jefe Inmediato", estado: "COMPLETADO" },
+          { paso: 3, clave: "EVIDENCIA_COLABORADOR", titulo: "Evidencia del colaborador", estado: "EN_PROCESO" },
+          { paso: 4, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "PENDIENTE" },
         ],
       };
     }
@@ -376,8 +418,8 @@ export class RegistroVacacionesService {
       pasos: [
         { paso: 1, clave: "ENVIADA", titulo: "Solicitud enviada", estado: "COMPLETADO" },
         { paso: 2, clave: "JEFE_INMEDIATO", titulo: "Vo. Bo. Jefe Inmediato", estado: "EN_PROCESO" },
-        { paso: 3, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "PENDIENTE" },
-        { paso: 4, clave: "APROBADA", titulo: "Solicitud aprobada", estado: "PENDIENTE" },
+        { paso: 3, clave: "EVIDENCIA_COLABORADOR", titulo: "Evidencia del colaborador", estado: "PENDIENTE" },
+        { paso: 4, clave: "GESTION_HUMANA", titulo: "Aprobación Gestión Humana", estado: "PENDIENTE" },
       ],
     };
   }
@@ -385,8 +427,8 @@ export class RegistroVacacionesService {
   private async determinarEtapaDesdeFirmas(
     solicitudId: number,
     registro?: any
-  ): Promise<"PENDIENTE_JEFE" | "PENDIENTE_GH" | "APROBADA" | "RECHAZADA"> {
-    const estadoReg = String(registro?.estado ?? "").trim().toLowerCase();
+  ): Promise<EtapaFlujoVacaciones> {
+    const estadoReg = this.normalizarTextoComparacion(registro?.estado ?? "");
     if (estadoReg === "rechazada" || estadoReg === "rechazado") {
       return "RECHAZADA";
     }
@@ -398,25 +440,70 @@ export class RegistroVacacionesService {
       );
 
       if (Array.isArray(firmas) && firmas.length > 0) {
-        const tieneGh = firmas.some(
-          (f) =>
-            Number(f?.solicitud_id) === Number(solicitudId) &&
-            String(f?.rol_firmante ?? "").toUpperCase() === "GESTION_HUMANA"
-        );
-        if (tieneGh) return "APROBADA";
+        const firmasDeSolicitud = firmas.filter((f) => {
+          const idFirma = Number(f?.solicitud_id ?? 0);
+          const tipo = String(f?.tipo_solicitud ?? "VACACIONES").toUpperCase();
+          return (
+            idFirma > 0 && idFirma === Number(solicitudId) && tipo === "VACACIONES"
+          );
+        });
 
-        const tieneJefe = firmas.some(
-          (f) =>
-            Number(f?.solicitud_id) === Number(solicitudId) &&
-            String(f?.rol_firmante ?? "").toUpperCase() === "JEFE_INMEDIATO"
+        const tieneJefe = firmasDeSolicitud.some(
+          (f) => String(f?.rol_firmante ?? "").toUpperCase() === "JEFE_INMEDIATO"
         );
-        if (tieneJefe) return "PENDIENTE_GH";
+        const tieneEvidencia =
+          Boolean(registro?.evidencia_enviada) ||
+          Boolean(registro?.evidencia_base64) ||
+          String(registro?.observaciones ?? "").includes("Evidencia:") ||
+          firmasDeSolicitud.some(
+            (f) => String(f?.rol_firmante ?? "").toUpperCase() === "EMPLEADO"
+          );
+        const tieneGh = firmasDeSolicitud.some(
+          (f) => String(f?.rol_firmante ?? "").toUpperCase() === "GESTION_HUMANA"
+        );
+
+        if (tieneJefe && tieneEvidencia && tieneGh) return "APROBADA";
+        if (tieneJefe && tieneEvidencia) return "PENDIENTE_GH";
+        if (tieneJefe) return "PENDIENTE_EVIDENCIA";
       }
     } catch {
       // Si falla la consulta de firmas, mantiene PENDIENTE_JEFE
     }
 
     return "PENDIENTE_JEFE";
+  }
+
+  private formatearRegistroConEtapa(reg: any, etapa: EtapaFlujoVacaciones) {
+    const estadoDerivado =
+      etapa === "APROBADA"
+        ? "Aprobada"
+        : etapa === "RECHAZADA"
+          ? "Rechazada"
+          : etapa === "PENDIENTE_EVIDENCIA" || etapa === "PENDIENTE_GH"
+            ? "En revisión"
+            : "Pendiente";
+
+    const jefeAprobado =
+      etapa === "PENDIENTE_EVIDENCIA" ||
+      etapa === "PENDIENTE_GH" ||
+      etapa === "APROBADA";
+    const evidenciaEnviada = etapa === "PENDIENTE_GH" || etapa === "APROBADA";
+    const ghAprobado = etapa === "APROBADA";
+
+    return {
+      ...reg,
+      estado: estadoDerivado,
+      estado_jefe:
+        etapa === "RECHAZADA"
+          ? "Rechazado"
+          : jefeAprobado
+            ? "Aprobado"
+            : "Pendiente",
+      estado_evidencia: evidenciaEnviada ? "Enviada" : "Pendiente",
+      evidencia_enviada: evidenciaEnviada,
+      estado_gh: ghAprobado ? "Aprobado" : "Pendiente",
+      linea_proceso: this.construirLineaProceso(etapa),
+    };
   }
 
   async listarRegistros() {
@@ -428,26 +515,7 @@ export class RegistroVacacionesService {
           idNum > 0
             ? await this.determinarEtapaDesdeFirmas(idNum, reg)
             : "PENDIENTE_JEFE";
-        const estadoDerivado =
-          etapa === "APROBADA"
-            ? "Aprobada"
-            : etapa === "RECHAZADA"
-              ? "Rechazada"
-              : etapa === "PENDIENTE_GH"
-                ? "En revisión"
-                : "Pendiente";
-        return {
-          ...reg,
-          estado: estadoDerivado,
-          estado_jefe:
-            etapa === "PENDIENTE_GH" || etapa === "APROBADA"
-              ? "Aprobado"
-              : etapa === "RECHAZADA"
-                ? "Rechazado"
-                : "Pendiente",
-          estado_gh: etapa === "APROBADA" ? "Aprobado" : "Pendiente",
-          linea_proceso: this.construirLineaProceso(etapa),
-        };
+        return this.formatearRegistroConEtapa(reg, etapa);
       })
     );
   }
@@ -458,26 +526,7 @@ export class RegistroVacacionesService {
       throw new Error("Registro de vacaciones no encontrado");
     }
     const etapa = await this.determinarEtapaDesdeFirmas(id, registro);
-    const estadoDerivado =
-      etapa === "APROBADA"
-        ? "Aprobada"
-        : etapa === "RECHAZADA"
-          ? "Rechazada"
-          : etapa === "PENDIENTE_GH"
-            ? "En revisión"
-            : "Pendiente";
-    return {
-      ...registro,
-      estado: estadoDerivado,
-      estado_jefe:
-        etapa === "PENDIENTE_GH" || etapa === "APROBADA"
-          ? "Aprobado"
-          : etapa === "RECHAZADA"
-            ? "Rechazado"
-            : "Pendiente",
-      estado_gh: etapa === "APROBADA" ? "Aprobado" : "Pendiente",
-      linea_proceso: this.construirLineaProceso(etapa),
-    };
+    return this.formatearRegistroConEtapa(registro, etapa);
   }
 
   async listarPorEmpleado(empleadoId: number) {
@@ -489,26 +538,7 @@ export class RegistroVacacionesService {
           idNum > 0
             ? await this.determinarEtapaDesdeFirmas(idNum, reg)
             : "PENDIENTE_JEFE";
-        const estadoDerivado =
-          etapa === "APROBADA"
-            ? "Aprobada"
-            : etapa === "RECHAZADA"
-              ? "Rechazada"
-              : etapa === "PENDIENTE_GH"
-                ? "En revisión"
-                : "Pendiente";
-        return {
-          ...reg,
-          estado: estadoDerivado,
-          estado_jefe:
-            etapa === "PENDIENTE_GH" || etapa === "APROBADA"
-              ? "Aprobado"
-              : etapa === "RECHAZADA"
-                ? "Rechazado"
-                : "Pendiente",
-          estado_gh: etapa === "APROBADA" ? "Aprobado" : "Pendiente",
-          linea_proceso: this.construirLineaProceso(etapa),
-        };
+        return this.formatearRegistroConEtapa(reg, etapa);
       })
     );
   }
@@ -571,6 +601,8 @@ export class RegistroVacacionesService {
       periodo_id: periodoId,
       fecha_disfrute: fechaDisfrute.trim(),
       dias_tomados: diasTomados,
+      estado: "Pendiente",
+      estado_constancia: "Pendiente",
     };
 
     const nuevoId = await this.registroRepo.crear(payloadNormalizado);
@@ -606,8 +638,11 @@ export class RegistroVacacionesService {
     const creado = await this.registroRepo.obtenerPorId(nuevoId);
     return {
       ...(creado ?? {}),
+      id: nuevoId,
       estado: "Pendiente",
       estado_jefe: "Pendiente",
+      estado_evidencia: "Pendiente",
+      evidencia_enviada: false,
       estado_gh: "Pendiente",
       linea_proceso: this.construirLineaProceso("PENDIENTE_JEFE"),
     };
@@ -617,6 +652,24 @@ export class RegistroVacacionesService {
     const registro = await this.registroRepo.obtenerPorId(id);
     if (!registro) {
       throw new Error("Registro de vacaciones no encontrado");
+    }
+
+    const etapaActual = await this.determinarEtapaDesdeFirmas(id, registro);
+    if (etapaActual === "RECHAZADA") {
+      throw new Error("No se puede aprobar una solicitud rechazada");
+    }
+    if (etapaActual === "PENDIENTE_EVIDENCIA") {
+      throw new Error(
+        "La solicitud ya fue aprobada por el Jefe Inmediato y está en espera de la evidencia del colaborador"
+      );
+    }
+    if (etapaActual === "PENDIENTE_GH") {
+      throw new Error(
+        "La solicitud ya fue aprobada por el Jefe Inmediato y está pendiente de Gestión Humana"
+      );
+    }
+    if (etapaActual === "APROBADA") {
+      throw new Error("La solicitud ya fue aprobada por Gestión Humana");
     }
 
     try {
@@ -650,6 +703,106 @@ export class RegistroVacacionesService {
     });
 
     try {
+      await this.notificacionRepo.crear({
+        solicitudId: id,
+        tipoSolicitud: "VACACIONES",
+        destinatarioTipo: "EMPLEADO",
+        destinatarioReferencia: String(registro.empleado_id),
+        titulo: "Solicitud aprobada por jefe inmediato · Pendiente de evidencia",
+        mensaje: `Tu solicitud #${id} fue aprobada por tu jefe inmediato. Envía tu evidencia (si aplica) para pasar a Gestión Humana.`,
+      });
+    } catch (notifErr) {
+      console.error("[Servicio Notificacion aprobarPorJefe]:", notifErr);
+    }
+
+    return {
+      aprobado_por: "JEFE_INMEDIATO",
+      hash_documento: hashDocumento,
+      registro: {
+        ...registro,
+        estado: "En revisión",
+        estado_jefe: "Aprobado",
+        estado_evidencia: "Pendiente",
+        evidencia_enviada: false,
+        estado_gh: "Pendiente",
+        linea_proceso: this.construirLineaProceso("PENDIENTE_EVIDENCIA"),
+      },
+    };
+  }
+
+  async registrarEvidencia(id: number, payload: EvidenciaSolicitudPayload = {}) {
+    const registro = await this.registroRepo.obtenerPorId(id);
+    if (!registro) {
+      throw new Error("Registro de vacaciones no encontrado");
+    }
+
+    const etapaActual = await this.determinarEtapaDesdeFirmas(id, registro);
+    if (etapaActual === "RECHAZADA") {
+      throw new Error("No se puede enviar evidencia en una solicitud rechazada");
+    }
+    if (etapaActual === "PENDIENTE_JEFE") {
+      throw new Error(
+        "Primero debe aprobar el Jefe Inmediato antes de enviar la evidencia"
+      );
+    }
+    if (etapaActual === "APROBADA") {
+      throw new Error("La solicitud ya fue aprobada por Gestión Humana");
+    }
+
+    const obsActuales = String(registro.observaciones ?? "").trim();
+    const detalleEvidencia = [
+      payload.evidencia_nombre
+        ? `Evidencia: ${String(payload.evidencia_nombre).trim()}`
+        : payload.sin_evidencia
+          ? "Evidencia: Sin evidencia adjunta"
+          : payload.evidencia_url
+            ? `Evidencia: ${String(payload.evidencia_url).trim()}`
+            : "Evidencia: Confirmada por colaborador",
+      payload.observaciones ? String(payload.observaciones).trim() : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    const nuevasObservaciones = [obsActuales, detalleEvidencia]
+      .filter(Boolean)
+      .join(" — ");
+
+    if (nuevasObservaciones) {
+      await this.registroRepo.actualizar(id, {
+        observaciones: nuevasObservaciones,
+      });
+    }
+
+    const repoAny = this.registroRepo as any;
+    if (typeof repoAny.guardarEvidenciaAdjunta === "function") {
+      await repoAny.guardarEvidenciaAdjunta(id, {
+        evidencia_nombre: payload.evidencia_nombre ?? null,
+        evidencia_url: payload.evidencia_url ?? null,
+        evidencia_base64: payload.evidencia_base64 ?? null,
+      });
+    }
+
+    const remitenteRef = payload.enviado_por?.trim() || "COLABORADOR";
+    const hashEvidencia = generarHashFirma({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "EMPLEADO",
+      firmanteReferencia: remitenteRef,
+      fechaHoraIso: new Date().toISOString(),
+      resumenDatos: `empleado=${registro.empleado_id};evidencia=${payload.evidencia_nombre ?? payload.evidencia_url ?? "confirmada"}`,
+    });
+
+    await this.firmaRepo.crear({
+      solicitudId: id,
+      tipoSolicitud: "VACACIONES",
+      rolFirmante: "EMPLEADO",
+      firmanteReferencia: remitenteRef,
+      firmaTexto: detalleEvidencia || null,
+      firmaBase64: payload.evidencia_base64 ?? null,
+      hashDocumento: hashEvidencia,
+    });
+
+    try {
       const empleado = await this.empleadoRepo.obtenerPorId(
         Number(registro.empleado_id)
       );
@@ -664,20 +817,26 @@ export class RegistroVacacionesService {
         tipoSolicitud: "VACACIONES",
         destinatarioTipo: "GESTION_HUMANA",
         destinatarioReferencia: null,
-        titulo: "Solicitud aprobada por jefe inmediato",
-        mensaje: `La solicitud #${id} de ${nombreEmpleado} fue aprobada por su jefe inmediato y está lista para Gestión Humana.`,
+        titulo: "Evidencia enviada · Lista para Gestión Humana",
+        mensaje: `${nombreEmpleado} completó el paso de evidencia en la solicitud #${id}; pendiente de aprobación final de Gestión Humana.`,
       });
     } catch (notifErr) {
-      console.error("[Servicio Notificacion aprobarPorJefe]:", notifErr);
+      console.error("[Servicio Notificacion registrarEvidencia]:", notifErr);
     }
 
     return {
-      aprobado_por: "JEFE_INMEDIATO",
-      hash_documento: hashDocumento,
+      evidencia_enviada: true,
+      hash_documento: hashEvidencia,
       registro: {
         ...registro,
+        observaciones: nuevasObservaciones || registro.observaciones,
+        evidencia_nombre: payload.evidencia_nombre ?? registro.evidencia_nombre ?? null,
+        evidencia_url: payload.evidencia_url ?? registro.evidencia_url ?? null,
+        evidencia_base64: payload.evidencia_base64 ?? registro.evidencia_base64 ?? null,
         estado: "En revisión",
         estado_jefe: "Aprobado",
+        estado_evidencia: "Enviada",
+        evidencia_enviada: true,
         estado_gh: "Pendiente",
         linea_proceso: this.construirLineaProceso("PENDIENTE_GH"),
       },
@@ -691,6 +850,24 @@ export class RegistroVacacionesService {
     const registro = await this.registroRepo.obtenerPorId(id);
     if (!registro) {
       throw new Error("Registro de vacaciones no encontrado");
+    }
+
+    const etapaActual = await this.determinarEtapaDesdeFirmas(id, registro);
+    if (etapaActual === "RECHAZADA") {
+      throw new Error("No se puede aprobar una solicitud rechazada");
+    }
+    if (etapaActual === "PENDIENTE_JEFE") {
+      throw new Error(
+        "Primero debe aprobar el Jefe Inmediato antes de que Gestión Humana apruebe la solicitud"
+      );
+    }
+    if (etapaActual === "PENDIENTE_EVIDENCIA") {
+      throw new Error(
+        "Primero debe completarse el paso de evidencia del colaborador antes de la aprobación final de Gestión Humana"
+      );
+    }
+    if (etapaActual === "APROBADA") {
+      throw new Error("La solicitud ya fue aprobada por Gestión Humana");
     }
 
     try {
@@ -743,6 +920,8 @@ export class RegistroVacacionesService {
         ...registro,
         estado: "Aprobada",
         estado_jefe: "Aprobado",
+        estado_evidencia: "Enviada",
+        evidencia_enviada: true,
         estado_gh: "Aprobado",
         linea_proceso: this.construirLineaProceso("APROBADA"),
       },
@@ -779,7 +958,7 @@ export class RegistroVacacionesService {
       if (
         registro.periodo_id &&
         Number(registro.dias_tomados ?? 0) > 0 &&
-        String((registro as any).estado ?? "").toLowerCase() !== "rechazada"
+        this.normalizarTextoComparacion((registro as any).estado) !== "rechazada"
       ) {
         await this.periodoRepo.ajustarDiasDisponibles(
           Number(registro.periodo_id),
@@ -815,96 +994,5 @@ export class RegistroVacacionesService {
         linea_proceso: this.construirLineaProceso("RECHAZADA"),
       },
     };
-  }
-
-  async actualizarRegistro(id: number, input: ActualizarRegistroVacacionesInput) {
-    const actual = await this.registroRepo.obtenerPorId(id);
-    if (!actual) {
-      throw new Error("Registro de vacaciones no encontrado");
-    }
-
-    const periodoDestinoId = input.periodo_id ?? actual.periodo_id;
-    const empleadoDestinoId = input.empleado_id ?? actual.empleado_id;
-    const nuevosDias =
-      input.dias_tomados !== undefined
-        ? Number(input.dias_tomados)
-        : Number(actual.dias_tomados);
-
-    if (nuevosDias <= 0) {
-      throw new Error("dias_tomados debe ser mayor que 0");
-    }
-
-    const periodoDestino = await this.periodoRepo.obtenerPorId(periodoDestinoId);
-    if (!periodoDestino) {
-      throw new Error("Periodo de vacaciones no encontrado");
-    }
-
-    if (Number(periodoDestino.empleado_id) !== Number(empleadoDestinoId)) {
-      throw new Error(
-        "El periodo seleccionado no pertenece al empleado indicado"
-      );
-    }
-
-    await this.periodoRepo.ajustarDiasDisponibles(
-      actual.periodo_id,
-      Number(actual.dias_tomados)
-    );
-
-    const periodoActualizado =
-      await this.periodoRepo.obtenerPorId(periodoDestinoId);
-    const disponibles = Number(periodoActualizado?.dias_disponibles ?? 0);
-
-    if (disponibles < nuevosDias) {
-      await this.periodoRepo.ajustarDiasDisponibles(
-        actual.periodo_id,
-        -Number(actual.dias_tomados)
-      );
-      throw new Error(
-        `Días insuficientes en el periodo (disponibles: ${disponibles}, solicitados: ${nuevosDias})`
-      );
-    }
-
-    const actualizado = await this.registroRepo.actualizar(id, {
-      ...input,
-      dias_tomados: nuevosDias,
-    });
-
-    if (!actualizado) {
-      await this.periodoRepo.ajustarDiasDisponibles(
-        actual.periodo_id,
-        -Number(actual.dias_tomados)
-      );
-      throw new Error("No se pudo actualizar el registro de vacaciones");
-    }
-
-    await this.periodoRepo.ajustarDiasDisponibles(periodoDestinoId, -nuevosDias);
-
-    const regActualizado = await this.registroRepo.obtenerPorId(id);
-    return {
-      ...(regActualizado ?? {}),
-      estado: "Pendiente",
-      estado_jefe: "Pendiente",
-      estado_gh: "Pendiente",
-      linea_proceso: this.construirLineaProceso("PENDIENTE_JEFE"),
-    };
-  }
-
-  async eliminarRegistro(id: number) {
-    const actual = await this.registroRepo.obtenerPorId(id);
-    if (!actual) {
-      throw new Error("Registro de vacaciones no encontrado");
-    }
-
-    const eliminado = await this.registroRepo.eliminar(id);
-    if (!eliminado) {
-      throw new Error("No se pudo eliminar el registro de vacaciones");
-    }
-
-    await this.periodoRepo.ajustarDiasDisponibles(
-      actual.periodo_id,
-      Number(actual.dias_tomados)
-    );
-
-    return { eliminado: true };
   }
 }

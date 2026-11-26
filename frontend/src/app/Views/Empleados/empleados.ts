@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.services';
 
 export interface MovimientoVacacion {
@@ -51,6 +51,24 @@ export interface FiniquitoGenerado {
   concepto: string;
 }
 
+interface EmpleadoListadoItem {
+  empleado_id?: number;
+  id?: number;
+  codigo_empleado?: string;
+  nombre?: string;
+  nombre_completo?: string;
+  nombre_empleados?: string;
+  puesto?: string;
+  cargo?: string;
+  sucursal?: string;
+  lugar?: string;
+  fecha_ingreso?: string;
+  ingreso?: string;
+  fecha_egreso?: string | null;
+  egreso?: string | null;
+  periodos?: PeriodoVacacionExpediente[];
+}
+
 @Component({
   selector: 'app-empleados',
   standalone: true,
@@ -61,6 +79,7 @@ export interface FiniquitoGenerado {
 export class EmpleadosComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
 
   private readonly apiUrl = 'http://localhost:3000/api';
   private readonly diasVacacionesRequeridos = 15;
@@ -72,6 +91,8 @@ export class EmpleadosComponent implements OnInit {
   readonly periodoActivoIndex = signal<number>(0);
   readonly generandoFiniquito = signal<boolean>(false);
   readonly finiquitoGenerado = signal<FiniquitoGenerado | null>(null);
+
+  private codigoConsultadoActual = '';
 
   readonly periodoSeleccionado = computed<PeriodoVacacionExpediente | null>(() => {
     const exp = this.expediente();
@@ -93,7 +114,137 @@ export class EmpleadosComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.cargarMiExpediente();
+    this.route.queryParamMap.subscribe((params) => {
+      const codigoParam = (params.get('codigo') ?? '').trim();
+      this.codigoConsultadoActual = codigoParam;
+      if (codigoParam) {
+        this.cargarExpedientePorCodigo(codigoParam);
+      } else {
+        this.cargarMiExpediente();
+      }
+    });
+  }
+
+  private mapearEmpleadoAExpediente(
+    emp: EmpleadoListadoItem,
+    base?: Partial<ExpedienteEmpleado>
+  ): ExpedienteEmpleado {
+    const empleadoId = emp.empleado_id ?? emp.id ?? base?.empleado_id;
+    const codigoEmp = String(emp.codigo_empleado ?? base?.codigo_empleado ?? '').trim();
+    const nombre =
+      emp.nombre_completo ||
+      emp.nombre ||
+      emp.nombre_empleados ||
+      base?.nombre ||
+      codigoEmp ||
+      'Colaborador';
+
+    return {
+      empleado_id: empleadoId,
+      codigo_empleado: codigoEmp,
+      nombre,
+      puesto: emp.puesto || emp.cargo || base?.puesto || 'Cargo no asignado',
+      sucursal: emp.lugar || emp.sucursal || base?.sucursal || 'Sede no asignada',
+      ingreso: emp.fecha_ingreso || emp.ingreso || base?.ingreso || '—',
+      egreso: emp.fecha_egreso ?? emp.egreso ?? base?.egreso ?? '—',
+      periodos: Array.isArray(emp.periodos) ? emp.periodos : (base?.periodos ?? []),
+    };
+  }
+
+  cargarExpedientePorCodigo(codigo: string): void {
+    const codigoLimpio = codigo.trim();
+    if (!codigoLimpio) {
+      this.cargarMiExpediente();
+      return;
+    }
+
+    this.cargando.set(true);
+    this.errorMensaje.set('');
+
+    const fallbackPorCodigo: ExpedienteEmpleado = {
+      codigo_empleado: codigoLimpio,
+      nombre: `Empleado Código ${codigoLimpio}`,
+      puesto: 'Cargo no asignado',
+      sucursal: 'Sede no asignada',
+      ingreso: '—',
+      egreso: '—',
+      periodos: [],
+    };
+
+    this.http
+      .get<EmpleadoListadoItem[] | { data?: EmpleadoListadoItem[]; empleados?: EmpleadoListadoItem[] }>(
+        `${this.apiUrl}/empleados`
+      )
+      .subscribe({
+        next: (res) => {
+          const lista = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.data)
+              ? res.data
+              : Array.isArray(res?.empleados)
+                ? res.empleados
+                : [];
+
+          const codigoNorm = codigoLimpio.toLowerCase();
+          const encontrado = lista.find(
+            (item) => String(item.codigo_empleado ?? '').trim().toLowerCase() === codigoNorm
+          );
+
+          if (!encontrado) {
+            this.expediente.set(fallbackPorCodigo);
+            this.periodoActivoIndex.set(0);
+            this.cargando.set(false);
+            this.errorMensaje.set(`No se encontró ningún empleado con el código "${codigoLimpio}".`);
+            return;
+          }
+
+          const baseExp = this.mapearEmpleadoAExpediente(encontrado, fallbackPorCodigo);
+          const empId = encontrado.empleado_id ?? encontrado.id ?? '';
+          const codEmp = encontrado.codigo_empleado ?? codigoLimpio;
+          const query = `?empleado_id=${encodeURIComponent(String(empId))}&codigo_empleado=${encodeURIComponent(String(codEmp))}`;
+
+          this.http
+            .get<ExpedienteEmpleado | { data?: ExpedienteEmpleado }>(
+              `${this.apiUrl}/empleados/mi-expediente${query}`
+            )
+            .subscribe({
+              next: (expRes) => {
+                const detalle =
+                  (expRes as { data?: ExpedienteEmpleado })?.data ??
+                  (expRes as ExpedienteEmpleado);
+
+                this.expediente.set({
+                  ...baseExp,
+                  ...(detalle && typeof detalle === 'object' ? detalle : {}),
+                  empleado_id: detalle?.empleado_id ?? baseExp.empleado_id,
+                  codigo_empleado: detalle?.codigo_empleado ?? baseExp.codigo_empleado,
+                  nombre: detalle?.nombre || baseExp.nombre,
+                  puesto: detalle?.puesto || baseExp.puesto,
+                  sucursal: detalle?.sucursal || baseExp.sucursal,
+                  ingreso: detalle?.ingreso || baseExp.ingreso,
+                  periodos: Array.isArray(detalle?.periodos)
+                    ? detalle.periodos
+                    : baseExp.periodos,
+                });
+                this.periodoActivoIndex.set(0);
+                this.cargando.set(false);
+              },
+              error: () => {
+                this.expediente.set(baseExp);
+                this.periodoActivoIndex.set(0);
+                this.cargando.set(false);
+              },
+            });
+        },
+        error: () => {
+          this.expediente.set(fallbackPorCodigo);
+          this.periodoActivoIndex.set(0);
+          this.cargando.set(false);
+          this.errorMensaje.set(
+            `No se pudo consultar el empleado con código "${codigoLimpio}" desde el servidor.`
+          );
+        },
+      });
   }
 
   cargarMiExpediente(): void {
@@ -180,7 +331,11 @@ export class EmpleadosComponent implements OnInit {
           this.generandoFiniquito.set(false);
           this.finiquitoGenerado.set(res.finiquito);
           if (descontarDias) {
-            this.cargarMiExpediente();
+            if (this.codigoConsultadoActual) {
+              this.cargarExpedientePorCodigo(this.codigoConsultadoActual);
+            } else {
+              this.cargarMiExpediente();
+            }
           }
         },
         error: (err) => {

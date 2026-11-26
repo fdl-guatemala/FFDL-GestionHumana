@@ -19,7 +19,11 @@ export interface SolicitudAprobacionItem {
   rango_o_fechas: string;
   dias_horas: string;
   motivo: string;
+  evidencia_nombre?: string;
+  evidencia_url?: string;
+  evidencia_base64?: string;
   estado_jefe: "Pendiente" | "Aprobado" | "Rechazado";
+  estado_evidencia: "Pendiente" | "Enviada";
   estado_gh: "Pendiente" | "Aprobado" | "Rechazado";
   estado: "Pendiente" | "En revisión" | "Aprobada" | "Rechazada";
   observaciones?: string;
@@ -240,9 +244,6 @@ export class AprobarSolicitudesComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
   private readonly apiBaseUrl = "http://localhost:3000/api";
-  private readonly storageAprobadosJefeKey = "ffdl_aprobadas_jefe_ids";
-  private readonly storageAprobadasGhKey = "ffdl_aprobadas_gh_ids";
-  private readonly storageRechazadasKey = "ffdl_rechazadas_ids";
   readonly usuario = this.authService.usuarioActual;
 
   readonly solicitudes = signal<SolicitudAprobacionItem[]>([]);
@@ -256,51 +257,6 @@ export class AprobarSolicitudesComponent implements OnInit {
   firmaTexto = "";
   observacionesTexto = "";
   motivoRechazoTexto = "";
-
-  private obtenerIdsLocal(key: string): Set<string> {
-    try {
-      const raw = localStorage.getItem(key);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(parsed)) return new Set();
-      return new Set(parsed.map((v) => String(v).trim()).filter(Boolean));
-    } catch {
-      return new Set();
-    }
-  }
-
-  private obtenerIdsAprobadosJefeLocal(): Set<string> {
-    return this.obtenerIdsLocal(this.storageAprobadosJefeKey);
-  }
-
-  private obtenerIdsAprobadasGhLocal(): Set<string> {
-    return this.obtenerIdsLocal(this.storageAprobadasGhKey);
-  }
-
-  private obtenerIdsRechazadasLocal(): Set<string> {
-    return this.obtenerIdsLocal(this.storageRechazadasKey);
-  }
-
-  private marcarIdLocal(key: string, id: number | string): void {
-    const ids = this.obtenerIdsLocal(key);
-    ids.add(String(id).trim());
-    try {
-      localStorage.setItem(key, JSON.stringify([...ids]));
-    } catch {
-      // Ignorar error de almacenamiento
-    }
-  }
-
-  private marcarAprobadaJefeLocal(id: number | string): void {
-    this.marcarIdLocal(this.storageAprobadosJefeKey, id);
-  }
-
-  private marcarAprobadaGhLocal(id: number | string): void {
-    this.marcarIdLocal(this.storageAprobadasGhKey, id);
-  }
-
-  private marcarRechazadaLocal(id: number | string): void {
-    this.marcarIdLocal(this.storageRechazadasKey, id);
-  }
 
   private normalizarTexto(valor: unknown): string {
     return String(valor ?? "")
@@ -563,22 +519,7 @@ export class AprobarSolicitudesComponent implements OnInit {
       return false;
     }
 
-    const idStr = String(item.id ?? "").trim();
-    if (
-      idStr &&
-      (this.obtenerIdsAprobadasGhLocal().has(idStr) ||
-        this.obtenerIdsRechazadasLocal().has(idStr))
-    ) {
-      return false;
-    }
-
-    const aprobadaJefeLocal =
-      Boolean(idStr) && this.obtenerIdsAprobadosJefeLocal().has(idStr);
-
-    const jefeYaAprobo =
-      item.directo_a_rrhh === true ||
-      item.estado_jefe === "Aprobado" ||
-      aprobadaJefeLocal;
+    const jefeYaAprobo = item.estado_jefe === "Aprobado";
 
     if (!jefeYaAprobo && this.coincideConJefeAsignado(item)) {
       return true;
@@ -598,6 +539,7 @@ export class AprobarSolicitudesComponent implements OnInit {
       this.esRrhh() &&
       !esPropiaSolicitud &&
       jefeYaAprobo &&
+      item.estado_evidencia === "Enviada" &&
       item.estado_gh !== "Aprobado"
     ) {
       return true;
@@ -606,86 +548,38 @@ export class AprobarSolicitudesComponent implements OnInit {
     return false;
   }
 
-  private normalizarLineaProceso(
-    rawLinea: any,
-    estadoJefe: SolicitudAprobacionItem["estado_jefe"],
-    estadoGh: SolicitudAprobacionItem["estado_gh"],
-    estado: SolicitudAprobacionItem["estado"]
-  ): any {
-    const pasosBase = Array.isArray(rawLinea?.pasos) ? rawLinea.pasos : [];
-    const etapa = String(rawLinea?.etapa_actual ?? "").toUpperCase();
+  private extraerDataUrlDesdeTexto(texto: string): string {
+    const match = texto.match(/data:[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/);
+    return match ? match[0] : "";
+  }
 
-    const jefeListo =
-      estadoJefe === "Aprobado" ||
-      estado === "En revisión" ||
-      estado === "Aprobada" ||
-      etapa === "PENDIENTE_GH" ||
-      etapa === "GESTION_HUMANA";
+  private extraerNombreEvidenciaDesdeTexto(texto: string): string {
+    const match = texto.match(/Evidencia:\s*([^\n|]+)/i);
+    return match ? match[1].trim() : "";
+  }
 
-    const ghListo = estadoGh === "Aprobado" || estado === "Aprobada";
-
-    return {
-      ...(rawLinea && typeof rawLinea === "object" ? rawLinea : {}),
-      etapa_actual:
-        estado === "Aprobada"
-          ? "APROBADA"
-          : estado === "Rechazada"
-            ? "RECHAZADA"
-            : jefeListo
-              ? "PENDIENTE_GH"
-              : rawLinea?.etapa_actual || "PENDIENTE_JEFE",
-      pasos: pasosBase.map((p: any, idx: number) => {
-        const pasoNum = Number(p?.paso ?? idx + 1);
-        const clave = String(p?.clave ?? "").toUpperCase();
-
-        if (pasoNum === 1 || clave === "ENVIADA") {
-          return { ...p, estado: "COMPLETADO" };
-        }
-        if (pasoNum === 2 || clave === "JEFE_INMEDIATO") {
-          return {
-            ...p,
-            estado:
-              estadoJefe === "Rechazado"
-                ? "RECHAZADO"
-                : jefeListo
-                  ? "COMPLETADO"
-                  : p?.estado || "EN_PROCESO",
-          };
-        }
-        if (pasoNum === 3 || clave === "GESTION_HUMANA") {
-          if (estadoGh === "Rechazado") {
-            return { ...p, estado: "RECHAZADO" };
-          }
-          if (estado === "Aprobada") {
-            return { ...p, estado: "COMPLETADO" };
-          }
-          return {
-            ...p,
-            estado: jefeListo ? "EN_PROCESO" : p?.estado || "PENDIENTE",
-          };
-        }
-        if (pasoNum === 4 || clave === "APROBADA") {
-          return { ...p, estado: ghListo ? "COMPLETADO" : "PENDIENTE" };
-        }
-        return p;
-      }),
-    };
+  private obtenerMimeDesdeNombre(nombreArchivo: string): string {
+    const lower = nombreArchivo.toLowerCase();
+    if (lower.endsWith(".pdf")) return "application/pdf";
+    if (lower.endsWith(".png")) return "image/png";
+    if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+    if (lower.endsWith(".webp")) return "image/webp";
+    if (lower.endsWith(".doc")) return "application/msword";
+    if (lower.endsWith(".docx")) {
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    }
+    return "application/octet-stream";
   }
 
   private normalizarSolicitud(raw: any): SolicitudAprobacionItem {
-    const lineaEtapa = String(raw?.linea_proceso?.etapa_actual ?? "").toUpperCase();
-    const estadoRaw = String(raw?.estado ?? "").trim();
+    const lineaEtapa = String(
+      raw?.linea_proceso?.etapa_actual ?? raw?.etapa_flujo ?? ""
+    ).toUpperCase();
+    const estadoRaw = String(raw?.estado ?? raw?.estado_constancia ?? "").trim();
     const estadoJefeRaw = String(raw?.estado_jefe ?? "").trim();
     const estadoGhRaw = String(raw?.estado_gh ?? "").trim();
 
     const idResuelto = raw?.id ?? raw?.solicitud_id;
-    const idStr = idResuelto !== undefined ? String(idResuelto).trim() : "";
-    const aprobadaJefeLocal =
-      Boolean(idStr) && this.obtenerIdsAprobadosJefeLocal().has(idStr);
-    const aprobadaGhLocal =
-      Boolean(idStr) && this.obtenerIdsAprobadasGhLocal().has(idStr);
-    const rechazadaLocal =
-      Boolean(idStr) && this.obtenerIdsRechazadasLocal().has(idStr);
 
     const jefeBackend = String(
       raw?.jefe_inmediato ??
@@ -714,53 +608,86 @@ export class AprobarSolicitudesComponent implements OnInit {
       nombreEmpNorm
     );
 
+    const ghAprobado =
+      lineaEtapa === "APROBADA" ||
+      estadoRaw === "Aprobada" ||
+      estadoRaw === "Aprobado" ||
+      estadoGhRaw === "Aprobado";
+
+    const jefeAprobado =
+      ghAprobado ||
+      estadoJefeRaw === "Aprobado" ||
+      lineaEtapa === "PENDIENTE_EVIDENCIA" ||
+      lineaEtapa === "PENDIENTE_GH" ||
+      lineaEtapa === "GESTION_HUMANA";
+
+    const evidenciaEnviada =
+      ghAprobado ||
+      Boolean(raw?.evidencia_enviada) ||
+      lineaEtapa === "PENDIENTE_GH" ||
+      lineaEtapa === "GESTION_HUMANA";
+
     let estado: SolicitudAprobacionItem["estado"] = "Pendiente";
     let estadoJefe: SolicitudAprobacionItem["estado_jefe"] =
-      estadoJefeRaw === "Aprobado" || estadoJefeRaw === "Rechazado"
-        ? estadoJefeRaw
-        : jerarquia.directoARrhh || aprobadaGhLocal || aprobadaJefeLocal
+      estadoJefeRaw === "Rechazado"
+        ? "Rechazado"
+        : jefeAprobado
           ? "Aprobado"
           : "Pendiente";
+    let estadoEvidencia: SolicitudAprobacionItem["estado_evidencia"] =
+      evidenciaEnviada ? "Enviada" : "Pendiente";
     let estadoGh: SolicitudAprobacionItem["estado_gh"] =
-      estadoGhRaw === "Aprobado" || estadoGhRaw === "Rechazado"
-        ? estadoGhRaw
-        : aprobadaGhLocal
+      estadoGhRaw === "Rechazado"
+        ? "Rechazado"
+        : ghAprobado
           ? "Aprobado"
           : "Pendiente";
 
     if (
-      rechazadaLocal ||
       lineaEtapa === "RECHAZADA" ||
       estadoRaw === "Rechazada" ||
-      estadoRaw === "Rechazado"
+      estadoRaw === "Rechazado" ||
+      estadoJefe === "Rechazado" ||
+      estadoGh === "Rechazado"
     ) {
       estado = "Rechazada";
-    } else if (
-      lineaEtapa === "APROBADA" ||
-      estadoRaw === "Aprobada" ||
-      estadoRaw === "Aprobado" ||
-      estadoGhRaw === "Aprobado" ||
-      aprobadaGhLocal
-    ) {
+    } else if (ghAprobado) {
       estado = "Aprobada";
       estadoJefe = "Aprobado";
+      estadoEvidencia = "Enviada";
       estadoGh = "Aprobado";
-    } else if (
-      jerarquia.directoARrhh ||
-      estadoJefeRaw === "Aprobado" ||
-      aprobadaJefeLocal
-    ) {
+    } else if (jefeAprobado) {
       estado = "En revisión";
-      estadoJefe = "Aprobado";
-      estadoGh = "Pendiente";
     }
 
-    const lineaNormalizada = this.normalizarLineaProceso(
-      raw?.linea_proceso,
-      estadoJefe,
-      estadoGh,
-      estado
-    );
+    const obsRaw = String(raw?.observaciones ?? "");
+    const motivoRaw = String(raw?.motivo ?? "");
+    const lineaStr = JSON.stringify(raw?.linea_proceso ?? {});
+
+    const evidenciaBase64 = String(
+      raw?.evidencia_base64 ??
+        raw?.evidenciaBase64 ??
+        raw?.archivo_base64 ??
+        raw?.linea_proceso?.evidencia_base64 ??
+        this.extraerDataUrlDesdeTexto(`${obsRaw} ${motivoRaw} ${lineaStr}`) ??
+        ""
+    ).trim();
+
+    const evidenciaUrl = String(
+      raw?.evidencia_url ??
+        raw?.evidenciaUrl ??
+        raw?.linea_proceso?.evidencia_url ??
+        ""
+    ).trim();
+
+    const evidenciaNombre = String(
+      raw?.evidencia_nombre ??
+        raw?.evidenciaNombre ??
+        raw?.archivo_nombre ??
+        raw?.linea_proceso?.evidencia_nombre ??
+        this.extraerNombreEvidenciaDesdeTexto(`${obsRaw} ${motivoRaw}`) ??
+        ""
+    ).trim();
 
     return {
       id: idResuelto,
@@ -782,13 +709,75 @@ export class AprobarSolicitudesComponent implements OnInit {
         raw?.dias_horas ??
         (raw?.dias_tomados !== undefined ? `${raw.dias_tomados} día(s)` : ""),
       motivo: raw?.motivo ?? raw?.observaciones ?? "Solicitud de permiso / vacaciones",
+      evidencia_nombre: evidenciaNombre,
+      evidencia_url: evidenciaUrl,
+      evidencia_base64: evidenciaBase64,
       estado_jefe: estadoJefe,
+      estado_evidencia: estadoEvidencia,
       estado_gh: estadoGh,
       estado,
       observaciones: raw?.observaciones ?? "",
       motivo_rechazo: raw?.motivo_rechazo ?? "",
-      linea_proceso: lineaNormalizada,
+      linea_proceso: raw?.linea_proceso,
     };
+  }
+
+  tieneEvidenciaDescargable(item: SolicitudAprobacionItem | null): boolean {
+    if (!item) return false;
+    return Boolean(
+      (item.evidencia_base64 && item.evidencia_base64.trim().length > 0) ||
+        (item.evidencia_url && item.evidencia_url.trim().length > 0)
+    );
+  }
+
+  descargarEvidencia(item: SolicitudAprobacionItem | null): void {
+    if (!item) return;
+
+    this.mensajeError.set("");
+    const nombreArchivo =
+      item.evidencia_nombre?.trim() || `Evidencia_Solicitud_${item.id}`;
+
+    if (item.evidencia_base64 && item.evidencia_base64.trim().length > 0) {
+      try {
+        const rawBase64 = item.evidencia_base64.trim();
+        const mimeMatch = rawBase64.match(/^data:([^;]+);base64,(.+)$/s);
+        const mime = mimeMatch?.[1] || this.obtenerMimeDesdeNombre(nombreArchivo);
+        const base64Limpio = (mimeMatch?.[2] || rawBase64).replace(/\s+/g, "");
+
+        const byteCharacters = atob(base64Limpio);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mime });
+        const objectUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+        return;
+      } catch {
+        this.mensajeError.set(
+          "No se pudo decodificar el archivo adjunto de la evidencia."
+        );
+        return;
+      }
+    }
+
+    if (item.evidencia_url && item.evidencia_url.trim().length > 0) {
+      window.open(item.evidencia_url.trim(), "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    this.mensajeError.set(
+      "Esta solicitud no tiene un archivo adjunto o enlace descargable registrado en el servidor."
+    );
   }
 
   cargarSolicitudes(): void {
@@ -834,6 +823,32 @@ export class AprobarSolicitudesComponent implements OnInit {
     this.mensajeError.set("");
     this.firmaTexto = this.nombreUsuario();
     this.observacionesTexto = item.observaciones ?? "";
+
+    const idNum = Number(item.id);
+    if (Number.isInteger(idNum) && idNum > 0) {
+      this.http
+        .get<any>(`${this.apiBaseUrl}/vacaciones/${idNum}`)
+        .pipe(catchError(() => of(null)))
+        .subscribe((detalle) => {
+          const rawDet = detalle?.data ?? detalle?.registro ?? detalle;
+          if (rawDet && typeof rawDet === "object") {
+            const normalizadaDet = this.normalizarSolicitud({
+              ...rawDet,
+              id: rawDet.id ?? rawDet.solicitud_id ?? item.id,
+            });
+            const fusionada: SolicitudAprobacionItem = {
+              ...item,
+              ...normalizadaDet,
+              evidencia_base64:
+                normalizadaDet.evidencia_base64 || item.evidencia_base64,
+              evidencia_url: normalizadaDet.evidencia_url || item.evidencia_url,
+              evidencia_nombre:
+                normalizadaDet.evidencia_nombre || item.evidencia_nombre,
+            };
+            this.solicitudEnFicha.set(fusionada);
+          }
+        });
+    }
   }
 
   cerrarFicha(): void {
@@ -849,9 +864,11 @@ export class AprobarSolicitudesComponent implements OnInit {
 
   esEtapaGestionHumana(item: SolicitudAprobacionItem | null): boolean {
     if (!item) return false;
-    const jefeYaAprobo =
-      item.directo_a_rrhh === true || item.estado_jefe === "Aprobado";
-    return this.esRrhh() && jefeYaAprobo;
+    return (
+      this.esRrhh() &&
+      item.estado_jefe === "Aprobado" &&
+      item.estado_evidencia === "Enviada"
+    );
   }
 
   aprobarYEnviarAGestionHumana(): void {
@@ -860,6 +877,13 @@ export class AprobarSolicitudesComponent implements OnInit {
     if (!actual || !id) return;
 
     const esGh = this.esEtapaGestionHumana(actual);
+
+    if (!esGh && actual.estado_jefe === "Aprobado" && actual.estado_evidencia !== "Enviada") {
+      this.mensajeError.set(
+        "Esta solicitud ya fue aprobada por el jefe inmediato y está en espera de la evidencia del colaborador antes de Gestión Humana."
+      );
+      return;
+    }
 
     const endpoint = esGh
       ? `${this.apiBaseUrl}/vacaciones/${id}/aprobar-gh`
@@ -878,15 +902,11 @@ export class AprobarSolicitudesComponent implements OnInit {
         observaciones: this.observacionesTexto.trim() || undefined,
         estado: esGh ? "Aprobada" : "En revisión",
         estado_jefe: "Aprobado",
+        estado_evidencia: esGh ? "Enviada" : "Pendiente",
         estado_gh: esGh ? "Aprobado" : "Pendiente",
       })
       .subscribe({
         next: () => {
-          if (esGh) {
-            this.marcarAprobadaGhLocal(id);
-          } else {
-            this.marcarAprobadaJefeLocal(id);
-          }
           this.solicitudes.update((prev) =>
             prev.filter((s) => Number(s.id) !== id)
           );
@@ -899,7 +919,7 @@ export class AprobarSolicitudesComponent implements OnInit {
           this.mensajeExito.set(
             esGh
               ? "Solicitud aprobada definitivamente por Gestión Humana."
-              : "Aprobada por Jefa Inmediata y enviada a Gestión Humana para validación final."
+              : "Aprobada por Jefe Inmediato. Pasará al colaborador para subir evidencia si aplica antes de Gestión Humana."
           );
         },
         error: () => {
@@ -949,7 +969,6 @@ export class AprobarSolicitudesComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.marcarRechazadaLocal(id);
           this.solicitudes.update((prev) =>
             prev.filter((s) => Number(s.id) !== id)
           );

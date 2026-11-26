@@ -63,11 +63,158 @@
         </div>
       </div>
 
+      <!-- Ficha de datos de la solicitud y envío de evidencia -->
+      <div class="pv-ficha-evidencia" *ngIf="solicitudSeleccionada() as det">
+        <div class="pv-ficha-header">
+          <div>
+            <span class="pv-ficha-kicker">Expediente de solicitud</span>
+            <h3 class="pv-ficha-title">Datos de la ficha · Solicitud #{{ det.id }}</h3>
+          </div>
+          <span
+            class="pv-badge"
+            [class.is-approved]="det.estado === 'Aprobada'"
+            [class.is-rejected]="det.estado === 'Rechazada'"
+            [class.is-pending]="det.estado === 'Pendiente' || det.estado === 'En revisión'"
+          >
+            {{ det.estado }}
+          </span>
+        </div>
+
+        <div class="pv-ficha-grid">
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Colaborador</span>
+            <strong class="pv-ficha-value">{{ det.nombre_colaborador || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Jefe inmediato</span>
+            <strong class="pv-ficha-value">{{ det.jefe_inmediato || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Fecha de solicitud</span>
+            <strong class="pv-ficha-value">{{ det.fecha_solicitud || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Fecha(s) de ausencia</span>
+            <strong class="pv-ficha-value">{{ det.rango_o_fechas || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Días / Horas</span>
+            <strong class="pv-ficha-value">{{ det.dias_horas || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Motivo</span>
+            <strong class="pv-ficha-value">{{ det.motivo || '—' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Vo. Bo. Jefe Inmediato</span>
+            <strong class="pv-ficha-value">{{ det.estado_jefe || 'Pendiente' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Evidencia del colaborador</span>
+            <strong class="pv-ficha-value">{{ det.estado_evidencia || 'Pendiente' }}</strong>
+          </div>
+
+          <div class="pv-ficha-item">
+            <span class="pv-ficha-label">Aprobación Gestión Humana</span>
+            <strong class="pv-ficha-value">{{ det.estado_gh || 'Pendiente' }}</strong>
+          </div>
+        </div>
+
+        <div *ngIf="puedeEnviarEvidencia()" class="pv-evidencia-acciones">
+          <div class="pv-evidencia-bar">
+            <div>
+              <h4 class="pv-evidencia-heading">Paso 3 · Evidencia del colaborador</h4>
+              <p class="pv-evidencia-desc">
+                Sube tu documento de soporte o agrega enlace/comentarios, o confirma si no aplica, para enviar la solicitud a Gestión Humana.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="pv-btn-yellow"
+              (click)="alternarPanelEvidencia()"
+            >
+              {{ mostrarPanelEvidencia() ? 'Ocultar formulario' : 'Enviar evidencia a Gestión Humana' }}
+            </button>
+          </div>
+
+          <div *ngIf="mostrarPanelEvidencia()" class="pv-evidencia-form">
+            <div class="pv-campo">
+              <label for="evidenciaArchivo">Subir documento de soporte (PDF, imagen o documento · máx. 3 MB)</label>
+              <input
+                id="evidenciaArchivo"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                (change)="onArchivoEvidenciaSeleccionado($event)"
+              />
+              <small *ngIf="evidenciaArchivoNombre" class="pv-archivo-ok">
+                Documento listo: <strong>{{ evidenciaArchivoNombre }}</strong>
+              </small>
+            </div>
+
+            <div class="pv-evidencia-campos">
+              <div class="pv-campo">
+                <label for="evidenciaNombre">Nombre o referencia del soporte / evidencia</label>
+                <input
+                  id="evidenciaNombre"
+                  type="text"
+                  [(ngModel)]="evidenciaNombre"
+                  placeholder="Ej. Constancia_medica.pdf o comprobante"
+                />
+              </div>
+
+              <div class="pv-campo">
+                <label for="evidenciaUrl">Enlace o ruta de respaldo (opcional)</label>
+                <input
+                  id="evidenciaUrl"
+                  type="text"
+                  [(ngModel)]="evidenciaUrl"
+                  placeholder="https://... o carpeta de respaldo"
+                />
+              </div>
+            </div>
+
+            <div class="pv-campo">
+              <label for="evidenciaObs">Comentarios para Gestión Humana</label>
+              <textarea
+                id="evidenciaObs"
+                [(ngModel)]="evidenciaObservaciones"
+                rows="3"
+                placeholder="Agrega cualquier observación o detalle relevante para Gestión Humana..."
+              ></textarea>
+            </div>
+
+            <label class="pv-checkbox">
+              <input type="checkbox" [(ngModel)]="sinEvidenciaAdjunta" />
+              <span>Confirmar envío sin archivo adjunto (no aplica evidencia para esta solicitud)</span>
+            </label>
+
+            <div class="pv-evidencia-footer">
+              <button
+                type="button"
+                class="pv-btn-yellow"
+                [disabled]="enviandoEvidencia()"
+                (click)="enviarEvidenciaAGestionHumana()"
+              >
+                {{ enviandoEvidencia() ? 'Enviando a Gestión Humana...' : 'Confirmar y enviar a Gestión Humana' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="pv-timeline-obs" *ngIf="solicitudSeleccionada()?.observaciones as obs">
         <strong>Observaciones registradas:</strong> {{ obs }}
       </div>
 
-      <!-- Panel de aprobación en dos pasos: Jefe Inmediato -> Gestión Humana -->
+      <!-- Panel de aprobación: Jefe Inmediato -> Gestión Humana -->
       <div
         class="pv-approval-box"
         *ngIf="solicitudSeleccionada() as det"
@@ -121,13 +268,17 @@
         </ng-container>
 
         <ng-template #soloConsultaEmpleado>
-          <p class="pv-step-msg">
+          <p class="pv-step-msg" *ngIf="!puedeEnviarEvidencia()">
             Solo puedes consultar el avance de esta solicitud en la línea de tiempo. La aprobación corresponde a tu jefe inmediato y luego a Gestión Humana.
           </p>
         </ng-template>
 
         <div class="pv-alert pv-alert-info" *ngIf="estadoFeedback()" style="margin-top: 10px;">
           {{ estadoFeedback() }}
+        </div>
+
+        <div class="pv-alert pv-alert-error" *ngIf="errorMensaje()" style="margin-top: 10px;">
+          {{ errorMensaje() }}
         </div>
       </div>
     </section>

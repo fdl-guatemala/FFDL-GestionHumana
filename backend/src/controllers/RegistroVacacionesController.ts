@@ -152,6 +152,14 @@ export class RegistroVacacionesController {
   private normalizarPayload(body: any): Record<string, any> {
     const raw = body && typeof body === "object" ? { ...body } : {};
 
+    // Nunca permitir que al crear llegue preaprobada desde el cliente
+    delete raw.estado;
+    delete raw.estado_aprobacion;
+    delete raw.aprobado_por;
+    delete raw.firma_jefe_inmediato;
+    delete raw.firma_gh;
+    delete raw.firma_gestion_humana;
+
     const diasTomados = this.extraerDiasTomados(raw);
     if (diasTomados > 0) {
       raw.dias_tomados = diasTomados;
@@ -391,10 +399,11 @@ export class RegistroVacacionesController {
       }
 
       const payload = this.normalizarPayload(req.body);
-      const actualizado = await this.registroService.actualizarRegistro(
-        id,
-        payload
-      );
+      const serviceAny = this.registroService as any;
+      const actualizado =
+        typeof serviceAny.actualizarRegistro === "function"
+          ? await serviceAny.actualizarRegistro(id, payload)
+          : await serviceAny.actualizar(id, payload);
       res.status(200).json(actualizado);
     } catch (error) {
       const mensaje =
@@ -426,7 +435,11 @@ export class RegistroVacacionesController {
         return;
       }
 
-      const resultado = await this.registroService.eliminarRegistro(id);
+      const serviceAny = this.registroService as any;
+      const resultado =
+        typeof serviceAny.eliminarRegistro === "function"
+          ? await serviceAny.eliminarRegistro(id)
+          : await serviceAny.eliminar(id);
       res.status(200).json(resultado);
     } catch (error) {
       const mensaje =
@@ -473,6 +486,48 @@ export class RegistroVacacionesController {
       let status = 500;
       if (mensaje === "Registro de vacaciones no encontrado") status = 404;
       else if (mensaje.includes("estado") || mensaje.includes("pendiente")) {
+        status = 400;
+      }
+      res.status(status).json({ message: mensaje });
+    }
+  };
+
+  registrarEvidencia = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ message: "ID de registro inválido" });
+        return;
+      }
+
+      const body = req.body && typeof req.body === "object" ? { ...req.body } : {};
+      if (!body.evidencia_base64 && (body.evidenciaBase64 || body.archivo_base64)) {
+        body.evidencia_base64 = body.evidenciaBase64 ?? body.archivo_base64;
+      }
+      if (!body.evidencia_nombre && (body.evidenciaNombre || body.archivo_nombre)) {
+        body.evidencia_nombre = body.evidenciaNombre ?? body.archivo_nombre;
+      }
+      if (!body.evidencia_url && body.evidenciaUrl) {
+        body.evidencia_url = body.evidenciaUrl;
+      }
+
+      const resultado = await this.registroService.registrarEvidencia(
+        id,
+        body
+      );
+      res.status(200).json(resultado);
+    } catch (error) {
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : "Error al registrar evidencia de la solicitud";
+      let status = 500;
+      if (mensaje === "Registro de vacaciones no encontrado") status = 404;
+      else if (
+        mensaje.includes("Primero debe") ||
+        mensaje.includes("rechazada") ||
+        mensaje.includes("ya fue aprobada")
+      ) {
         status = 400;
       }
       res.status(status).json({ message: mensaje });

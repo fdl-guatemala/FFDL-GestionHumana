@@ -16,7 +16,7 @@
   </header>
 
   <main class="sv-main">
-    <div class="sv-sheet">
+    <div class="sv-sheet" style="max-width: 1180px; width: 100%;">
       <!-- Datos precargados automáticamente -->
       <div class="sv-meta-grid">
         <div class="sv-meta-item">
@@ -42,59 +42,110 @@
       </p>
 
       <!-- Tabla de detalle -->
-      <div class="sv-table-wrap">
-        <table class="sv-table">
+      <div class="sv-table-wrap" style="overflow-x: auto;">
+        <table class="sv-table" style="width: 100%; min-width: 1020px; border-collapse: separate; border-spacing: 0;">
           <thead>
             <tr>
-              <th>Fecha de ausencia</th>
-              <th>Horario de ausencia</th>
-              <th>Número de días u horas solicitadas</th>
-              <th>Motivo</th>
-              <th class="sv-col-action"></th>
+              <th style="min-width: 165px; padding: 14px 12px; font-size: 14px;">Fecha de ausencia</th>
+              <th style="min-width: 245px; padding: 14px 12px; font-size: 14px;">Horario de ausencia</th>
+              <th style="min-width: 250px; padding: 14px 12px; font-size: 14px;">Número de días u horas solicitadas</th>
+              <th style="min-width: 195px; padding: 14px 12px; font-size: 14px;">Motivo</th>
+              <th style="min-width: 230px; padding: 14px 12px; font-size: 14px;">Tipo de permiso</th>
+              <th class="sv-col-action" style="width: 48px;"></th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let fila of filas; let i = index">
-              <td>
+              <td style="padding: 14px 10px;">
                 <input
                   type="date"
                   [(ngModel)]="fila.fecha_ausencia"
                   [name]="'fecha_ausencia_' + i"
+                  style="width: 100%; height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f294a; font-size: 14px;"
                   required
                 />
               </td>
-              <td>
-                <input
-                  type="text"
-                  placeholder="Ej. 08:00 - 17:00 o Jornada completa"
+              <td style="padding: 14px 10px;">
+                <select
                   [(ngModel)]="fila.horario_ausencia"
                   [name]="'horario_ausencia_' + i"
-                />
+                  style="width: 100%; height: 44px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f294a; font-size: 14px;"
+                >
+                  <option *ngFor="let hor of opcionesHorarioLista" [value]="hor">
+                    {{ hor }}
+                  </option>
+                </select>
               </td>
-              <td>
-                <input
-                  type="text"
-                  placeholder="Ej. 3 días o 4 horas"
-                  [(ngModel)]="fila.dias_horas_solicitadas"
-                  [name]="'dias_horas_' + i"
-                  required
-                />
+              <td style="padding: 14px 10px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button
+                    type="button"
+                    (click)="ajustarCantidadFila(i, -1)"
+                    title="Disminuir"
+                    style="width: 38px; height: 44px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; color: #0f294a; font-size: 20px; font-weight: 700; cursor: pointer; flex-shrink: 0;"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="0.5"
+                    [step]="fila.unidad_tiempo === 'horas' ? '1' : '0.5'"
+                    [ngModel]="fila.cantidad_solicitada"
+                    (ngModelChange)="alCambiarCantidadDirecta(i, $event)"
+                    [name]="'cantidad_solicitada_' + i"
+                    style="width: 74px; height: 44px; padding: 8px 6px; border: 1px solid #cbd5e1; border-radius: 8px; text-align: center; background: #fff; color: #0f294a; font-size: 15px; font-weight: 700;"
+                    required
+                  />
+                  <button
+                    type="button"
+                    (click)="ajustarCantidadFila(i, 1)"
+                    title="Incrementar"
+                    style="width: 38px; height: 44px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; color: #0f294a; font-size: 20px; font-weight: 700; cursor: pointer; flex-shrink: 0;"
+                  >
+                    +
+                  </button>
+                  <select
+                    [ngModel]="fila.unidad_tiempo"
+                    (ngModelChange)="alCambiarUnidadFila(i, $event)"
+                    [name]="'unidad_tiempo_' + i"
+                    style="height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f294a; font-size: 14px;"
+                  >
+                    <option value="días">días</option>
+                    <option value="horas">horas</option>
+                  </select>
+                </div>
               </td>
-              <td>
-                <input
-                  type="text"
-                  placeholder="Ej. Vacaciones"
+              <td style="padding: 14px 10px;">
+                <select
                   [(ngModel)]="fila.motivo"
                   [name]="'motivo_' + i"
-                />
+                  (ngModelChange)="alCambiarMotivoFila(i, $event)"
+                  style="width: 100%; height: 44px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f294a; font-size: 14px;"
+                >
+                  <option *ngFor="let op of opcionesMotivoLista" [value]="op">
+                    {{ op }}
+                  </option>
+                </select>
               </td>
-              <td class="sv-col-action">
+              <td style="padding: 14px 10px;">
+                <select
+                  [(ngModel)]="fila.tipo_permiso"
+                  [name]="'tipo_permiso_' + i"
+                  style="width: 100%; height: 44px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f294a; font-size: 14px;"
+                >
+                  <option *ngFor="let permiso of opcionesTipoPermisoLista" [value]="permiso">
+                    {{ permiso }}
+                  </option>
+                </select>
+              </td>
+              <td class="sv-col-action" style="padding: 14px 6px;">
                 <button
                   type="button"
                   class="sv-remove-btn"
                   *ngIf="filas.length > 1"
                   (click)="eliminarFila(i)"
                   title="Quitar fila"
+                  style="width: 36px; height: 36px; font-size: 18px;"
                 >
                   ×
                 </button>
@@ -110,67 +161,12 @@
         </button>
       </div>
 
-      <!-- Sección de selección con "X" -->
+      <!-- Sección de selección con "X" (solo Coordinación anticipada / Aviso posterior) -->
       <p class="sv-intro">
         A continuación seleccionar en cada columna la opción que corresponda con una X:
       </p>
 
       <div class="sv-checks-grid">
-        <!-- Columna 1: Modalidad / Horario -->
-        <div class="sv-check-col">
-          <div class="sv-check-row">
-            <span>Ausencia con trabajo desde casa en horario normal</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="modalidadHorario === 'trabajo_casa'"
-              (click)="modalidadHorario = modalidadHorario === 'trabajo_casa' ? '' : 'trabajo_casa'"
-            >
-              {{ modalidadHorario === 'trabajo_casa' ? 'X' : '' }}
-            </button>
-          </div>
-
-          <div class="sv-check-row">
-            <span>Ausencia con reposición de tiempo fuera de horario laboral</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="modalidadHorario === 'reposicion_tiempo'"
-              (click)="modalidadHorario = modalidadHorario === 'reposicion_tiempo' ? '' : 'reposicion_tiempo'"
-            >
-              {{ modalidadHorario === 'reposicion_tiempo' ? 'X' : '' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Columna 2: Goce de salario -->
-        <div class="sv-check-col">
-          <div class="sv-check-row">
-            <span>Con goce de salario</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="condicionSalario === 'con_goce'"
-              (click)="condicionSalario = condicionSalario === 'con_goce' ? '' : 'con_goce'"
-            >
-              {{ condicionSalario === 'con_goce' ? 'X' : '' }}
-            </button>
-          </div>
-
-          <div class="sv-check-row">
-            <span>Sin goce de salario</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="condicionSalario === 'sin_goce'"
-              (click)="condicionSalario = condicionSalario === 'sin_goce' ? '' : 'sin_goce'"
-            >
-              {{ condicionSalario === 'sin_goce' ? 'X' : '' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Columna 3: Coordinación / Aviso -->
         <div class="sv-check-col">
           <div class="sv-check-row">
             <span>Coordinación anticipada</span>
@@ -193,33 +189,6 @@
               (click)="tipoAviso = tipoAviso === 'aviso_posterior' ? '' : 'aviso_posterior'"
             >
               {{ tipoAviso === 'aviso_posterior' ? 'X' : '' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Columna 4: IGSS / Vacaciones -->
-        <div class="sv-check-col">
-          <div class="sv-check-row">
-            <span>IGSS</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="tipoMotivoEspecial === 'igss'"
-              (click)="seleccionarMotivoEspecial('igss')"
-            >
-              {{ tipoMotivoEspecial === 'igss' ? 'X' : '' }}
-            </button>
-          </div>
-
-          <div class="sv-check-row">
-            <span>Vacaciones</span>
-            <button
-              type="button"
-              class="sv-x-box"
-              [class.is-checked]="tipoMotivoEspecial === 'vacaciones'"
-              (click)="seleccionarMotivoEspecial('vacaciones')"
-            >
-              {{ tipoMotivoEspecial === 'vacaciones' ? 'X' : '' }}
             </button>
           </div>
         </div>

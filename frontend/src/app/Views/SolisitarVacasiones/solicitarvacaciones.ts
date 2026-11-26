@@ -17,8 +17,11 @@ import { AuthService, type UsuarioSesion } from '../../core/services/auth.servic
 interface DetalleAusenciaFila {
   fecha_ausencia: string;
   horario_ausencia: string;
+  cantidad_solicitada: number;
+  unidad_tiempo: 'días' | 'horas';
   dias_horas_solicitadas: string;
   motivo: string;
+  tipo_permiso: string;
 }
 
 interface EvidenciaAdjunta {
@@ -71,6 +74,36 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   private readonly apiUrl = 'http://localhost:3000/api';
   readonly usuario = this.authService.usuarioActual;
 
+  readonly opcionesHorarioLista: string[] = [
+    'Jornada completa (08:00 - 17:00)',
+    'Media jornada mañana (08:00 - 12:00)',
+    'Media jornada tarde (13:00 - 17:00)',
+    '08:00 - 10:00',
+    '08:00 - 12:00',
+    '13:00 - 15:00',
+    '15:00 - 17:00',
+  ];
+
+  readonly opcionesMotivoLista: string[] = [
+    'Vacaciones',
+    'IGSS',
+    'Ausencia con trabajo desde casa en horario normal',
+    'Ausencia con reposición de tiempo fuera de horario laboral',
+    'Con goce de salario',
+    'Sin goce de salario',
+  ];
+
+  readonly opcionesTipoPermisoLista: string[] = [
+    'Permiso personal',
+    'Permiso médico / Cita IGSS',
+    'Duelo / Fallecimiento familiar',
+    'Matrimonio',
+    'Nacimiento / Lactancia',
+    'Trámite legal o bancario',
+    'Diligencia institucional / Comisión',
+    'Caso fortuito o emergencia familiar',
+  ];
+
   nombreColaborador = '';
   fechaActual = this.obtenerFechaHoyISO();
   readonly sucursalSignal = signal<string>('');
@@ -90,14 +123,7 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     this.cargoSignal.set(valor);
   }
 
-  filas: DetalleAusenciaFila[] = [
-    {
-      fecha_ausencia: '',
-      horario_ausencia: '',
-      dias_horas_solicitadas: '',
-      motivo: 'Vacaciones',
-    },
-  ];
+  filas: DetalleAusenciaFila[] = [this.crearFilaVacia('Vacaciones', 'Permiso personal')];
 
   modalidadHorario: 'trabajo_casa' | 'reposicion_tiempo' | '' = '';
   condicionSalario: 'con_goce' | 'sin_goce' | '' = '';
@@ -130,8 +156,85 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this.inicializarCanvasFirma();
-    this.inicializarCanvasFirmaJefe();
+    setTimeout(() => {
+      this.inicializarCanvasFirma();
+      this.inicializarCanvasFirmaJefe();
+    }, 0);
+  }
+
+  private formatearTextoCantidad(cantidad: number, unidad: 'días' | 'horas'): string {
+    const valorSeguro = Math.max(0.5, Number(cantidad) || 1);
+    const esEntero = Number.isInteger(valorSeguro);
+    const numTexto = esEntero ? String(valorSeguro) : String(valorSeguro);
+    if (unidad === 'horas') {
+      return `${numTexto} ${valorSeguro === 1 ? 'hora' : 'horas'}`;
+    }
+    return `${numTexto} ${valorSeguro === 1 ? 'día' : 'días'}`;
+  }
+
+  private crearFilaVacia(motivo = 'Vacaciones', tipoPermiso = 'Permiso personal'): DetalleAusenciaFila {
+    const cantidadInicial = 1;
+    const unidadInicial: 'días' | 'horas' = 'días';
+    return {
+      fecha_ausencia: '',
+      horario_ausencia: this.opcionesHorarioLista[0],
+      cantidad_solicitada: cantidadInicial,
+      unidad_tiempo: unidadInicial,
+      dias_horas_solicitadas: this.formatearTextoCantidad(cantidadInicial, unidadInicial),
+      motivo,
+      tipo_permiso: tipoPermiso,
+    };
+  }
+
+  ajustarCantidadFila(index: number, delta: number): void {
+    const fila = this.filas[index];
+    if (!fila) return;
+    const paso = fila.unidad_tiempo === 'horas' ? 1 : 0.5;
+    const cambio = delta > 0 ? paso : -paso;
+    const nuevaCantidad = Math.max(0.5, Number(((Number(fila.cantidad_solicitada) || 0) + cambio).toFixed(2)));
+    fila.cantidad_solicitada = nuevaCantidad;
+    fila.dias_horas_solicitadas = this.formatearTextoCantidad(nuevaCantidad, fila.unidad_tiempo);
+  }
+
+  alCambiarCantidadDirecta(index: number, valor: unknown): void {
+    const fila = this.filas[index];
+    if (!fila) return;
+    const num = Number(valor);
+    const cantidadSegura = Number.isFinite(num) && num >= 0.5 ? num : 0.5;
+    fila.cantidad_solicitada = cantidadSegura;
+    fila.dias_horas_solicitadas = this.formatearTextoCantidad(cantidadSegura, fila.unidad_tiempo);
+  }
+
+  alCambiarUnidadFila(index: number, unidad: 'días' | 'horas'): void {
+    const fila = this.filas[index];
+    if (!fila) return;
+    fila.unidad_tiempo = unidad;
+    const cantidadSegura = Math.max(0.5, Number(fila.cantidad_solicitada) || 1);
+    fila.cantidad_solicitada = cantidadSegura;
+    fila.dias_horas_solicitadas = this.formatearTextoCantidad(cantidadSegura, unidad);
+  }
+
+  alCambiarMotivoFila(index: number, valorSeleccionado: string): void {
+    const fila = this.filas[index];
+    if (!fila) return;
+    fila.motivo = valorSeleccionado;
+
+    if (valorSeleccionado === 'Vacaciones') {
+      this.tipoMotivoEspecial = 'vacaciones';
+    } else if (valorSeleccionado === 'IGSS') {
+      this.tipoMotivoEspecial = 'igss';
+      if (!fila.tipo_permiso) {
+        fila.tipo_permiso = 'Permiso médico / Cita IGSS';
+      }
+    } else if (valorSeleccionado === 'Ausencia con trabajo desde casa en horario normal') {
+      this.modalidadHorario = 'trabajo_casa';
+    } else if (valorSeleccionado === 'Ausencia con reposición de tiempo fuera de horario laboral') {
+      this.modalidadHorario = 'reposicion_tiempo';
+    } else if (valorSeleccionado === 'Con goce de salario') {
+      this.condicionSalario = 'con_goce';
+    } else if (valorSeleccionado === 'Sin goce de salario') {
+      this.condicionSalario = 'sin_goce';
+    }
   }
 
   onSeleccionarEvidencias(event: Event): void {
@@ -183,27 +286,33 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     this.evidencias.splice(index, 1);
   }
 
+  private prepararCanvas(
+    canvas: HTMLCanvasElement,
+    fallbackHeight: number
+  ): CanvasRenderingContext2D | null {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(rect.width || canvas.clientWidth || 320, 100);
+    const height = Math.max(rect.height || canvas.clientHeight || fallbackHeight, 60);
+
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.lineWidth = 2.2;
+    context.strokeStyle = '#0f294a';
+    return context;
+  }
+
   private inicializarCanvasFirma(): void {
     const canvas = this.firmaCanvasRef?.nativeElement;
     if (!canvas) return;
-
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width > 0 ? rect.width : 320;
-    const height = rect.height > 0 ? rect.height : 90;
-
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    context.scale(ratio, ratio);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.lineWidth = 2;
-    context.strokeStyle = '#0f294a';
-    this.ctx = context;
+    this.ctx = this.prepararCanvas(canvas, 95);
   }
 
   private obtenerCoordenadas(event: MouseEvent | TouchEvent): { x: number; y: number } {
@@ -214,8 +323,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     if (event instanceof TouchEvent) {
       const touch = event.touches[0] ?? event.changedTouches[0];
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+        x: (touch?.clientX ?? rect.left) - rect.left,
+        y: (touch?.clientY ?? rect.top) - rect.top,
       };
     }
 
@@ -229,7 +338,17 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     if (event instanceof TouchEvent) {
       event.preventDefault();
     }
-    if (!this.ctx) {
+    const canvas = this.firmaCanvasRef?.nativeElement;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    if (
+      !this.ctx ||
+      canvas.width === 0 ||
+      canvas.height === 0 ||
+      (rect.width > 0 && Math.abs(canvas.width - Math.round(rect.width * ratio)) > 2)
+    ) {
       this.inicializarCanvasFirma();
     }
     if (!this.ctx) return;
@@ -249,12 +368,17 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     const { x, y } = this.obtenerCoordenadas(event);
     this.ctx.lineTo(x, y);
     this.ctx.stroke();
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, y);
     this.tieneFirmaDigital = true;
   }
 
   finalizarTrazo(): void {
     if (!this.dibujando) return;
     this.dibujando = false;
+    if (this.ctx) {
+      this.ctx.beginPath();
+    }
     const canvas = this.firmaCanvasRef?.nativeElement;
     if (canvas && this.tieneFirmaDigital) {
       this.firmaColaborador = canvas.toDataURL('image/png');
@@ -263,8 +387,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
   limpiarFirma(): void {
     const canvas = this.firmaCanvasRef?.nativeElement;
-    if (!canvas || !this.ctx) return;
-    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvas) return;
+    this.ctx = this.prepararCanvas(canvas, 95);
     this.firmaColaborador = '';
     this.tieneFirmaDigital = false;
   }
@@ -272,24 +396,7 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   private inicializarCanvasFirmaJefe(): void {
     const canvas = this.firmaJefeCanvasRef?.nativeElement;
     if (!canvas) return;
-
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const rect = canvas.getBoundingClientRect();
-    const width = rect.width > 0 ? rect.width : 320;
-    const height = rect.height > 0 ? rect.height : 95;
-
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    context.scale(ratio, ratio);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.lineWidth = 2;
-    context.strokeStyle = '#0f294a';
-    this.ctxJefe = context;
+    this.ctxJefe = this.prepararCanvas(canvas, 95);
   }
 
   private obtenerCoordenadasJefe(event: MouseEvent | TouchEvent): { x: number; y: number } {
@@ -300,8 +407,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     if (event instanceof TouchEvent) {
       const touch = event.touches[0] ?? event.changedTouches[0];
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+        x: (touch?.clientX ?? rect.left) - rect.left,
+        y: (touch?.clientY ?? rect.top) - rect.top,
       };
     }
 
@@ -315,7 +422,17 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     if (event instanceof TouchEvent) {
       event.preventDefault();
     }
-    if (!this.ctxJefe) {
+    const canvas = this.firmaJefeCanvasRef?.nativeElement;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    if (
+      !this.ctxJefe ||
+      canvas.width === 0 ||
+      canvas.height === 0 ||
+      (rect.width > 0 && Math.abs(canvas.width - Math.round(rect.width * ratio)) > 2)
+    ) {
       this.inicializarCanvasFirmaJefe();
     }
     if (!this.ctxJefe) return;
@@ -335,11 +452,16 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
     const { x, y } = this.obtenerCoordenadasJefe(event);
     this.ctxJefe.lineTo(x, y);
     this.ctxJefe.stroke();
+    this.ctxJefe.beginPath();
+    this.ctxJefe.moveTo(x, y);
   }
 
   finalizarTrazoJefe(): void {
     if (!this.dibujandoJefe) return;
     this.dibujandoJefe = false;
+    if (this.ctxJefe) {
+      this.ctxJefe.beginPath();
+    }
     const canvas = this.firmaJefeCanvasRef?.nativeElement;
     if (canvas) {
       this.firmaJefeInmediato = canvas.toDataURL('image/png');
@@ -348,8 +470,8 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
   limpiarFirmaJefe(): void {
     const canvas = this.firmaJefeCanvasRef?.nativeElement;
-    if (!canvas || !this.ctxJefe) return;
-    this.ctxJefe.clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvas) return;
+    this.ctxJefe = this.prepararCanvas(canvas, 95);
     this.firmaJefeInmediato = '';
   }
 
@@ -506,6 +628,10 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
   private calcularTotalDiasSolicitados(): number {
     return this.filas.reduce((acc, fila) => {
+      const cantidad = Number(fila.cantidad_solicitada);
+      if (Number.isFinite(cantidad) && cantidad > 0) {
+        return acc + (fila.unidad_tiempo === 'horas' ? Number((cantidad / 8).toFixed(2)) : cantidad);
+      }
       const texto = String(fila.dias_horas_solicitadas ?? '').trim().replace(',', '.');
       const match = texto.match(/(\d+(?:\.\d+)?)/);
       const num = match ? Number(match[1]) : 0;
@@ -514,30 +640,17 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
   }
 
   agregarFila(): void {
-    this.filas.push({
-      fecha_ausencia: '',
-      horario_ausencia: '',
-      dias_horas_solicitadas: '',
-      motivo: this.tipoMotivoEspecial === 'igss' ? 'IGSS' : 'Vacaciones',
-    });
+    this.filas.push(
+      this.crearFilaVacia(
+        this.filas[0]?.motivo || 'Vacaciones',
+        this.filas[0]?.tipo_permiso || 'Permiso personal'
+      )
+    );
   }
 
   eliminarFila(index: number): void {
     if (this.filas.length > 1) {
       this.filas.splice(index, 1);
-    }
-  }
-
-  seleccionarMotivoEspecial(valor: 'igss' | 'vacaciones'): void {
-    this.tipoMotivoEspecial = this.tipoMotivoEspecial === valor ? '' : valor;
-    if (this.tipoMotivoEspecial === 'vacaciones') {
-      this.filas.forEach((f) => {
-        if (!f.motivo) f.motivo = 'Vacaciones';
-      });
-    } else if (this.tipoMotivoEspecial === 'igss') {
-      this.filas.forEach((f) => {
-        if (!f.motivo) f.motivo = 'IGSS';
-      });
     }
   }
 
@@ -547,12 +660,12 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
     const u = this.usuario() as (UsuarioSesion & EmpleadoApiItem) | null;
     const filaInvalida = this.filas.some(
-      (f) => !f.fecha_ausencia || !f.dias_horas_solicitadas.trim()
+      (f) => !f.fecha_ausencia || !(Number(f.cantidad_solicitada) > 0)
     );
 
     if (filaInvalida) {
       this.mensajeError =
-        'Complete al menos la fecha de ausencia y los días u horas solicitadas en cada fila.';
+        'Complete al menos la fecha de ausencia y la cantidad de días u horas solicitadas en cada fila.';
       return;
     }
 
@@ -580,7 +693,15 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
 
     this.cargando = true;
 
-    const primeraFecha = this.filas[0]?.fecha_ausencia ?? this.fechaActual;
+    const filasNormalizadas = this.filas.map((f) => ({
+      ...f,
+      dias_horas_solicitadas: this.formatearTextoCantidad(
+        Number(f.cantidad_solicitada) || 1,
+        f.unidad_tiempo || 'días'
+      ),
+    }));
+
+    const primeraFecha = filasNormalizadas[0]?.fecha_ausencia ?? this.fechaActual;
     const totalDias = this.calcularTotalDiasSolicitados();
     const empleadoIdResuelto = u?.empleado_id ?? u?.id ?? null;
 
@@ -591,10 +712,11 @@ export class SolicitarVacacionesComponent implements OnInit, AfterViewInit {
       fecha_solicitud: this.fechaActual,
       fecha_disfrute: primeraFecha,
       dias_tomados: totalDias,
-      motivo: this.filas[0]?.motivo || 'Vacaciones',
+      motivo: filasNormalizadas[0]?.motivo || 'Vacaciones',
+      tipo_permiso: filasNormalizadas[0]?.tipo_permiso || 'Permiso personal',
       sucursal: this.sucursalSignal(),
       cargo: this.cargoSignal(),
-      detalle_ausencias: this.filas,
+      detalle_ausencias: filasNormalizadas,
       seleccion_x: {
         modalidad_horario: this.modalidadHorario,
         condicion_salario: this.condicionSalario,

@@ -141,6 +141,38 @@
 
       <hr class="ae-divider" />
 
+      <div class="ae-section-box">
+        <h2 class="ae-section-title">Buscar empleado por código</h2>
+
+        <div class="ae-delete-row">
+          <div class="ae-field ae-delete-input">
+            <label for="codigo_buscar">Código de empleado</label>
+            <input
+              id="codigo_buscar"
+              type="text"
+              [(ngModel)]="codigoBuscar"
+              name="codigoBuscar"
+              placeholder="Ej. 406"
+              (keyup.enter)="buscarEmpleadoPorCodigo()"
+            />
+          </div>
+
+          <button
+            type="button"
+            class="ae-btn-yellow"
+            (click)="buscarEmpleadoPorCodigo()"
+          >
+            Buscar empleado
+          </button>
+        </div>
+
+        <p class="ae-msg ae-error" *ngIf="mensajeBuscarError">
+          {{ mensajeBuscarError }}
+        </p>
+      </div>
+
+      <hr class="ae-divider" />
+
       <div class="ae-section-box ae-danger-box">
         <h2 class="ae-section-title">Eliminar empleado por código</h2>
 

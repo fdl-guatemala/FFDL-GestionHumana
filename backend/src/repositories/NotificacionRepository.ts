@@ -50,18 +50,33 @@ export class NotificacionRepository {
       r.includes("gestion") ||
       r.includes("humana") ||
       r === "gh" ||
-      r === "rrhh"
+      r === "rrhh" ||
+      r === "administrador rrhh"
     ) {
       return "GESTION_HUMANA";
     }
     if (
       r.includes("jefe") ||
       r.includes("gerente") ||
-      r.includes("supervisor")
+      r.includes("supervisor") ||
+      r === "2"
     ) {
       return "JEFE_INMEDIATO";
     }
     return "EMPLEADO";
+  }
+
+  private coincideReferencia(refNorm: string, candNorm: string): boolean {
+    if (!refNorm || !candNorm) return false;
+    if (refNorm === candNorm) return true;
+
+    // Evita falsos positivos cuando el candidato es solo un número corto (ej. "4" o "404")
+    const esSoloDigitos = /^\d+$/.test(candNorm);
+    if (esSoloDigitos) {
+      return refNorm === candNorm;
+    }
+
+    return refNorm.includes(candNorm) || candNorm.includes(refNorm);
   }
 
   async crear(input: CrearNotificacionInput): Promise<number> {
@@ -78,11 +93,18 @@ export class NotificacionRepository {
       VALUES (?, ?, ?, ?, ?, ?, 0)
     `;
 
+    const referenciaLimpia =
+      input.destinatarioReferencia !== undefined &&
+      input.destinatarioReferencia !== null &&
+      String(input.destinatarioReferencia).trim() !== ""
+        ? String(input.destinatarioReferencia).trim()
+        : null;
+
     const [result] = await pool.query<ResultSetHeader>(sql, [
       input.solicitudId,
       input.tipoSolicitud ?? "SOLICITUD",
       input.destinatarioTipo,
-      input.destinatarioReferencia ?? null,
+      referenciaLimpia,
       input.titulo,
       input.mensaje,
     ]);
@@ -132,12 +154,7 @@ export class NotificacionRepository {
       const refNorm = this.normalizarTexto(row.destinatario_referencia);
       if (!refNorm) return false;
 
-      return candidatosNorm.some(
-        (cand) =>
-          refNorm === cand ||
-          refNorm.includes(cand) ||
-          cand.includes(refNorm)
-      );
+      return candidatosNorm.some((cand) => this.coincideReferencia(refNorm, cand));
     });
   }
 

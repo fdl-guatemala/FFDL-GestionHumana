@@ -43,7 +43,7 @@ router.delete(
   registroController.eliminar
 );
 
-// Paso 1: Aprobación por Jefe Inmediato -> envía notificación a Gestión Humana
+// Paso 1: Aprobación por Jefe Inmediato -> pasa a pendiente de evidencia del colaborador
 router.post(
   "/:id/aprobar-jefe",
   validarIdNumerico("id"),
@@ -55,7 +55,14 @@ router.post(
   registroController.aprobarPorJefe
 );
 
-// Paso 2: Aprobación por Gestión Humana -> completa el flujo y notifica al empleado
+// Paso 2: Registro de evidencia del colaborador -> pasa a pendiente de Gestión Humana
+router.post(
+  "/:id/evidencia",
+  validarIdNumerico("id"),
+  registroController.registrarEvidencia
+);
+
+// Paso 3: Aprobación final por Gestión Humana -> completa el flujo y notifica al empleado
 router.post(
   "/:id/aprobar-gh",
   validarIdNumerico("id"),

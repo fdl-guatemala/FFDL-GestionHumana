@@ -16,7 +16,7 @@
 }
 
 .sv-topbar-inner {
-  max-width: 980px;
+  max-width: 1220px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -80,7 +80,7 @@
 }
 
 .sv-main {
-  max-width: 980px;
+  max-width: 1220px;
   margin: 24px auto 0;
   padding: 0 16px;
 }
@@ -111,24 +111,24 @@
 }
 
 .sv-meta-item label {
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-weight: 700;
   color: #0f294a;
 }
 
 .sv-meta-item input {
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background-color: #eef2f6;
   color: #0f294a;
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
 .sv-intro {
   margin: 18px 0 12px;
-  font-size: 0.93rem;
+  font-size: 0.96rem;
   font-weight: 600;
   color: #0f294a;
 }
@@ -142,63 +142,68 @@
 .sv-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 680px;
+  min-width: 1040px;
 }
 
 .sv-table th {
   background-color: #0f294a;
   color: #ffffff;
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 10px 12px;
+  padding: 13px 12px;
   text-align: left;
   border-right: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .sv-table td {
-  padding: 8px;
+  padding: 12px 10px;
   border-top: 1px solid #e2e8f0;
   border-right: 1px solid #e2e8f0;
+  vertical-align: middle;
 }
 
-.sv-table input {
+.sv-table input,
+.sv-table select {
   width: 100%;
+  min-height: 44px;
   box-sizing: border-box;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 0.88rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
   color: #0f294a;
+  background-color: #ffffff;
 }
 
 .sv-col-action {
-  width: 44px;
+  width: 48px;
   text-align: center;
 }
 
 .sv-remove-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   border: 1px solid #fca5a5;
   background-color: #fee2e2;
   color: #991b1b;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
 }
 
 .sv-add-row-wrap {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .sv-add-btn {
-  padding: 8px 14px;
+  padding: 10px 16px;
   border-radius: 8px;
   border: 1px dashed #163a66;
   background-color: #f8fafc;
   color: #163a66;
   font-weight: 700;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
@@ -208,42 +213,42 @@
 
 .sv-checks-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 14px;
   margin-bottom: 22px;
 }
 
 .sv-check-col {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  padding: 12px;
+  padding: 14px;
   background-color: #f8fafc;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
 
 .sv-check-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  font-size: 0.82rem;
+  gap: 10px;
+  font-size: 0.9rem;
   line-height: 1.35;
   color: #0f294a;
 }
 
 .sv-x-box {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   border: 2px solid #0f294a;
   border-radius: 6px;
   background-color: #ffffff;
   color: #0f294a;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
 }
 
@@ -256,13 +261,14 @@
 .sv-important-box {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  padding: 16px;
+  padding: 18px;
   background-color: #ffffff;
   margin-bottom: 24px;
 }
 
 .sv-important-title {
   font-weight: 700;
+  font-size: 0.98rem;
   color: #0f294a;
   margin-bottom: 10px;
 }
@@ -277,16 +283,16 @@
 }
 
 .sv-disponibles-row label {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 
 .sv-disponibles-row input {
-  width: 120px;
-  padding: 8px 10px;
+  width: 130px;
+  padding: 9px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
 .sv-obs-wrap {
@@ -296,7 +302,7 @@
 }
 
 .sv-obs-wrap label {
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -305,7 +311,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   resize: vertical;
 }
 
@@ -342,12 +348,12 @@
 .sv-sig-line-input,
 .sv-sig-name-input {
   width: 100%;
-  max-width: 320px;
+  max-width: 340px;
   border: none;
   border-bottom: 1.5px solid #0f294a;
   padding: 7px 6px 4px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: #0f294a;
   background: transparent;
   outline: none;
@@ -359,7 +365,7 @@
 }
 
 .sv-sig-caption {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: #475569;
   margin-top: 4px;
 }
@@ -368,13 +374,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 11px 20px;
+  padding: 12px 22px;
   border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, #e2ab32 0%, #d49b27 100%);
   color: #0f294a;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(212, 155, 39, 0.32);
 }
@@ -387,7 +393,7 @@
 .sv-msg {
   padding: 10px 14px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
   text-align: center;
 }
@@ -412,7 +418,7 @@
 
 @media (max-width: 900px) {
   .sv-checks-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 

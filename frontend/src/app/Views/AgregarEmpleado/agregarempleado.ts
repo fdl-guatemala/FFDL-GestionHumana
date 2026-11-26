@@ -2,7 +2,7 @@ import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 interface NuevoEmpleadoForm {
   codigo_empleado: string;
@@ -34,6 +34,7 @@ interface RespuestaEliminarCodigo {
 export class AgregarEmpleadoComponent {
   private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly router = inject(Router);
   private readonly apiUrl = 'http://localhost:3000/api';
 
   private fechaHoy(): string {
@@ -61,10 +62,28 @@ export class AgregarEmpleadoComponent {
   mensajeError = '';
   mensajeExito = '';
 
+  codigoBuscar = '';
+  mensajeBuscarError = '';
+
   codigoEliminar = '';
   eliminando = false;
   mensajeEliminarError = '';
   mensajeEliminarExito = '';
+
+  buscarEmpleadoPorCodigo(): void {
+    this.mensajeBuscarError = '';
+
+    const codigo = this.codigoBuscar.trim();
+    if (!codigo) {
+      this.mensajeBuscarError = 'Ingresa el código del empleado que deseas buscar.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.router.navigate(['/empleados'], {
+      queryParams: { codigo },
+    });
+  }
 
   guardarEmpleado(): void {
     this.mensajeError = '';

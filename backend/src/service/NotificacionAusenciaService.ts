@@ -21,7 +21,18 @@ export interface CrearNotificacionesSolicitudInput {
 }
 
 export class NotificacionAusenciaService {
-  async crearNotificacionesParaSolicitud(input: CrearNotificacionesSolicitudInput) {
+  private normalizarTexto(valor: unknown): string {
+    return String(valor ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  async crearNotificacionesParaSolicitud(
+    input: CrearNotificacionesSolicitudInput
+  ) {
     const codigoSol = String(input.codigo_solicitante ?? "").trim();
     const nombreSol = String(input.nombre_solicitante ?? "").trim();
     const sucursal = String(input.sucursal ?? "").trim();
@@ -41,123 +52,94 @@ export class NotificacionAusenciaService {
         const [jefeRows] = await pool.query<RowDataPacket[]>(
           `SELECT codigo_empleado, nombre_completo
            FROM empleados
-           WHERE codigo_empleado = ? OR nombre_completo LIKE ?
+           WHERE codigo_empleado = ? OR LOWER(TRIM(nombre_completo)) LIKE LOWER(?)
            LIMIT 1`,
-          [jefeRaw, `%${jefeRaw}%`]
+          [jefeRaw, `%${jefeRaw.toLowerCase()}%`]
         );
         if (jefeRows?.[0]) {
-          jefeCodigo = jefeCodigo || String(jefeRows[0].codigo_empleado ?? "").trim();
-          jefeNombre = jefeNombre || String(jefeRows[0].nombre_completo ?? "").trim();
+          jefeCodigo =
+            jefeCodigo || String(jefeRows[0].codigo_empleado ?? "").trim();
+          jefeNombre =
+            jefeNombre || String(jefeRows[0].nombre_completo ?? "").trim();
         } else if (!jefeCodigo) {
           jefeCodigo = jefeRaw;
         }
       }
     }
 
-    const titulo = `Nueva solicitud de ausencia - ${nombreSol}`;
+    const titulo = `Nueva solicitud de vacaciones - ${nombreSol}`;
     const mensajeBase = `${nombreSol} (${codigoSol})${
       cargo ? ` - ${cargo}` : ""
-    }${sucursal ? ` en ${sucursal}` : ""}${resumen} ha enviado una solicitud de ausencia pendiente de aprobación.`;
+    }${sucursal ? ` en ${sucursal}` : ""}${resumen} ha enviado una solicitud pendiente de aprobación del Jefe Inmediato.`;
 
-    const destinatarios: Array<{
-      tipo: RolNotificacion;
-      nombre: string | null;
-      codigo: string | null;
-    }> = [
-      {
-        tipo: "jefe_inmediato",
-        nombre: jefeNombre || "Jefe Inmediato",
-        codigo: jefeCodigo || null,
-      },
-      {
-        tipo: "gestion_humana",
-        nombre: "Gestión Humana",
-        codigo: null,
-      },
-      {
-        tipo: "gerente_general",
-        nombre: String(input.nombre_gerente_general ?? "").trim() || "Gerente General",
-        codigo: String(input.codigo_gerente_general ?? "").trim() || null,
-      },
-    ];
+    const [result] = await pool.query<ResultSetHeader>(
+      `INSERT INTO notificaciones_ausencias (
+        solicitud_id,
+        codigo_solicitante,
+        nombre_solicitante,
+        sucursal,
+        cargo,
+        destinatario_tipo,
+        destinatario_nombre,
+        destinatario_codigo,
+        titulo,
+        mensaje,
+        estado_aprobacion,
+        leida
+      ) VALUES (?, ?, ?, ?, ?, 'jefe_inmediato', ?, ?, ?, ?, 'pendiente', 0)`,
+      [
+        input.solicitud_id ?? null,
+        codigoSol,
+        nombreSol,
+        sucursal || null,
+        cargo || null,
+        jefeNombre || "Jefe Inmediato",
+        jefeCodigo || null,
+        titulo,
+        mensajeBase,
+      ]
+    );
 
-    const insertadas: number[] = [];
-
-    for (const dest of destinatarios) {
-      const [result] = await pool.query<ResultSetHeader>(
-        `INSERT INTO notificaciones_ausencias (
-          solicitud_id,
-          codigo_solicitante,
-          nombre_solicitante,
-          sucursal,
-          cargo,
-          destinatario_tipo,
-          destinatario_nombre,
-          destinatario_codigo,
-          titulo,
-          mensaje,
-          estado_aprobacion,
-          leida
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', 0)`,
-        [
-          input.solicitud_id ?? null,
-          codigoSol,
-          nombreSol,
-          sucursal || null,
-          cargo || null,
-          dest.tipo,
-          dest.nombre,
-          dest.codigo,
-          titulo,
-          mensajeBase,
-        ]
-      );
-      insertadas.push(result.insertId);
-    }
-
-    return insertadas;
+    return [result.insertId];
   }
 
   async listarNotificaciones(filtros?: {
     destinatario_tipo?: string;
     destinatario_codigo?: string;
+    destinatario_nombre?: string;
     solo_pendientes?: boolean;
   }) {
-    const tipo = String(filtros?.destinatario_tipo ?? "").trim();
-    const codigo = String(filtros?.destinatario_codigo ?? "").trim();
+    const tipo = this.normalizarTexto(filtros?.destinatario_tipo);
+    const filtroRefRaw = String(
+      filtros?.destinatario_codigo ?? filtros?.destinatario_nombre ?? ""
+    ).trim();
+    const filtroRefNorm = this.normalizarTexto(filtroRefRaw);
+
     const condiciones: string[] = [];
     const params: unknown[] = [];
 
-    if (tipo === "jefe_inmediato") {
+    if (tipo === "jefe_inmediato" || tipo === "jefe inmediato" || tipo === "jefe") {
       condiciones.push("destinatario_tipo = 'jefe_inmediato'");
-      if (codigo) {
-        condiciones.push("(destinatario_codigo = ? OR destinatario_nombre LIKE ?)");
-        params.push(codigo, `%${codigo}%`);
-      }
-    } else if (tipo === "gestion_humana") {
+    } else if (
+      tipo === "gestion_humana" ||
+      tipo === "gestion humana" ||
+      tipo === "gh" ||
+      tipo === "rrhh"
+    ) {
       condiciones.push("destinatario_tipo = 'gestion_humana'");
     } else if (tipo === "empleado") {
       condiciones.push("destinatario_tipo = 'empleado'");
-      if (codigo) {
-        condiciones.push("destinatario_codigo = ?");
-        params.push(codigo);
-      }
-    } else {
-      if (tipo) {
-        condiciones.push("destinatario_tipo = ?");
-        params.push(tipo);
-      }
-      if (codigo) {
-        condiciones.push("destinatario_codigo = ?");
-        params.push(codigo);
-      }
+    } else if (tipo) {
+      condiciones.push("destinatario_tipo = ?");
+      params.push(tipo);
     }
 
     if (filtros?.solo_pendientes) {
       condiciones.push("estado_aprobacion = 'pendiente'");
     }
 
-    const where = condiciones.length > 0 ? `WHERE ${condiciones.join(" AND ")}` : "";
+    const where =
+      condiciones.length > 0 ? `WHERE ${condiciones.join(" AND ")}` : "";
 
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT *
@@ -167,6 +149,31 @@ export class NotificacionAusenciaService {
        LIMIT 50`,
       params
     );
+
+    if (
+      (tipo === "jefe_inmediato" ||
+        tipo === "jefe inmediato" ||
+        tipo === "jefe" ||
+        tipo === "empleado") &&
+      filtroRefNorm
+    ) {
+      return rows.filter((row) => {
+        const codNorm = this.normalizarTexto(row.destinatario_codigo);
+        const nomNorm = this.normalizarTexto(row.destinatario_nombre);
+
+        if (!codNorm && !nomNorm) {
+          return tipo === "jefe_inmediato";
+        }
+
+        return (
+          (codNorm && codNorm === filtroRefNorm) ||
+          (nomNorm &&
+            (nomNorm === filtroRefNorm ||
+              nomNorm.includes(filtroRefNorm) ||
+              filtroRefNorm.includes(nomNorm)))
+        );
+      });
+    }
 
     return rows;
   }
